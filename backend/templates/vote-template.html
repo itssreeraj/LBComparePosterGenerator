@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Election Poster - Vote</title>
+  <link rel="stylesheet" href="base.css" />
+</head>
+<body>
+  <div class="poster" id="poster-root"></div>
+
+  <script>
+    const data = __DATA__;
+
+    const root = document.getElementById("poster-root");
+
+    const header = document.createElement("div");
+    header.className = "header";
+
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = data.localbody || "Localbody Name";
+
+    const subtitle = document.createElement("div");
+    subtitle.className = "subtitle";
+    const district = data.district ? `(${data.district})` : "";
+    subtitle.textContent = district;
+
+    header.appendChild(title);
+    header.appendChild(subtitle);
+    root.appendChild(header);
+
+    (data.years || []).forEach((yearBlock) => {
+      const sectionTitle = document.createElement("div");
+      sectionTitle.className = "section-title";
+      sectionTitle.textContent = yearBlock.year || "Year";
+      root.appendChild(sectionTitle);
+
+      (yearBlock.rows || []).forEach((row) => {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "row";
+
+        const tag = document.createElement("div");
+        tag.className = "tag";
+        tag.textContent = row.alliance || "Alliance";
+        if (row.color) {
+          tag.style.background = row.color;
+        } else {
+          tag.style.background = "#4b5563";
+        }
+
+        rowDiv.appendChild(tag);
+
+        if (data.showVotes) {
+          const value = document.createElement("div");
+          value.className = "value";
+          value.textContent = row.votes != null ? row.votes.toLocaleString() : "-";
+          rowDiv.appendChild(value);
+        }
+
+        if (data.showPercent) {
+          const percent = document.createElement("div");
+          percent.className = "percent";
+          percent.textContent = row.percent != null ? row.percent + "%" : "-";
+          rowDiv.appendChild(percent);
+        }
+
+        root.appendChild(rowDiv);
+      });
+    });
+
+    const footer = document.createElement("div");
+    footer.className = "footer";
+    footer.textContent = data.footerText || "Generated with Election Poster Generator";
+    root.appendChild(footer);
+  </script>
+</body>
+</html>
