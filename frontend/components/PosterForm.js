@@ -1,70 +1,82 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import AllianceEditor from "./AllianceEditor";
 
 export default function PosterForm({ onConfigChange }) {
   const [localbody, setLocalbody] = useState("");
   const [district, setDistrict] = useState("");
-  const [template, setTemplate] = useState("vote");
+  const [template, setTemplate] = useState("combined");
   const [showVotes, setShowVotes] = useState(true);
   const [showPercent, setShowPercent] = useState(true);
 
-  // === MULTI-YEAR SUPPORT ===
+  // ============================
+  // MULTI-YEAR DATA
+  // ============================
   const [years, setYears] = useState([
     {
       year: "2015",
-      alliances: [
+      notes: "",
+      votes: [
         { alliance: "LDF", color: "#dc2626", votes: 0, percent: 0 },
         { alliance: "UDF", color: "#2563eb", votes: 0, percent: 0 },
         { alliance: "NDA", color: "#f97316", votes: 0, percent: 0 }
+      ],
+      wards: [
+        { alliance: "LDF", color: "#dc2626", first: 0, second: 0, third: 0 },
+        { alliance: "UDF", color: "#2563eb", first: 0, second: 0, third: 0 },
+        { alliance: "NDA", color: "#f97316", first: 0, second: 0, third: 0 }
       ]
     }
   ]);
 
   const [activeTab, setActiveTab] = useState(0);
 
-  // ADD A NEW YEAR (Option 2)
+  // ============================
+  // UPDATE YEAR FIELDS
+  // ============================
+  const updateYearField = (index, field, value) => {
+    const updated = [...years];
+    updated[index][field] = value;
+    setYears(updated);
+  };
+
+  // ============================
+  // ADD NEW YEAR
+  // Option 2: Copy alliances structure (zero votes)
+  // ============================
   const addYear = () => {
     const last = years[years.length - 1];
-    const copiedAlliances = last.alliances.map(a =>
-      template === "vote"
-        ? {
-            alliance: a.alliance,
-            color: a.color,
-            votes: 0,
-            percent: 0
-          }
-        : {
-            alliance: a.alliance,
-            color: a.color,
-            first: 0,
-            second: 0,
-            third: 0
-          }
-    );
+
+    const copiedVotes = last.votes.map(a => ({
+      alliance: a.alliance,
+      color: a.color,
+      votes: 0,
+      percent: 0
+    }));
+
+    const copiedWards = last.wards.map(a => ({
+      alliance: a.alliance,
+      color: a.color,
+      first: 0,
+      second: 0,
+      third: 0
+    }));
 
     setYears([
       ...years,
       {
-        year: String(Number(last.year) + 5), // auto guess next year
-        alliances: copiedAlliances
+        year: String(Number(last.year) + 5),
+        notes: "",
+        votes: copiedVotes,
+        wards: copiedWards
       }
     ]);
 
     setActiveTab(years.length);
   };
 
-  const updateAllianceSet = (index, newAlliances) => {
-    const updated = [...years];
-    updated[index].alliances = newAlliances;
-    setYears(updated);
-  };
-
-  const updateYearValue = (index, value) => {
-    const updated = [...years];
-    updated[index].year = value;
-    setYears(updated);
-  };
-
+  // ============================
+  // REMOVE YEAR
+  // ============================
   const removeYear = (index) => {
     if (years.length === 1) return;
     const updated = years.filter((_, i) => i !== index);
@@ -72,38 +84,45 @@ export default function PosterForm({ onConfigChange }) {
     setActiveTab(0);
   };
 
-  // === Build config for backend ===
-  useEffect(() => {
-    const config = {
-      template,
+  // ============================
+  // Build final backend config
+  // ============================
+  const buildConfig = useCallback(() => {
+    return {
+      template: "combined",
       localbody,
       district,
       showVotes,
       showPercent,
-      years: years.map((y) => ({
+      years: years.map(y => ({
         year: y.year,
-        rows:
-          template === "vote"
-            ? [...y.alliances].sort((a, b) => b.votes - a.votes)
-            : [...y.alliances] // no sorting needed for wards
+        notes: y.notes,
+        votes: [...y.votes].sort((a, b) => b.votes - a.votes),
+        wards: [...y.wards] // ward performance is not sorted
       }))
-
     };
-    onConfigChange(config);
-  }, [localbody, district, template, showVotes, showPercent, years, onConfigChange]);
+  }, [localbody, district, showVotes, showPercent, years]);
 
+  useEffect(() => {
+    onConfigChange(buildConfig());
+  }, [localbody, district, template, showVotes, showPercent, years, buildConfig]);
+
+  // ============================
+  // RENDER UI
+  // ============================
   return (
     <div className="card">
       <h1>Election Poster Generator</h1>
 
-      {/* Basic Fields */}
+      {/* Basic Inputs */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
-          <label>Local body</label>
+          <label>Local Body</label>
           <input
             type="text"
             value={localbody}
             onChange={(e) => setLocalbody(e.target.value)}
+            placeholder="Vilappil Grama Panchayat"
           />
         </div>
 
@@ -113,33 +132,12 @@ export default function PosterForm({ onConfigChange }) {
             type="text"
             value={district}
             onChange={(e) => setDistrict(e.target.value)}
+            placeholder="Thiruvananthapuram"
           />
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div>
-          <label>Template</label>
-          <select
-            value={template}
-            onChange={(e) => setTemplate(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid #4b5563",
-              background: "#020617",
-              color: "#e5e7eb",
-              marginBottom: 12,
-            }}
-          >
-            <option value="vote">Vote poster</option>
-            <option value="wards">Ward performance poster</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Column toggles */}
+      {/* Show Votes / % */}
       <div className="checkbox-row">
         <label>
           <input
@@ -160,7 +158,7 @@ export default function PosterForm({ onConfigChange }) {
         </label>
       </div>
 
-      {/* === YEAR TABS === */}
+      {/* Year Tabs */}
       <div style={{ marginTop: 20, marginBottom: 10 }}>
         {years.map((y, idx) => (
           <button
@@ -182,8 +180,11 @@ export default function PosterForm({ onConfigChange }) {
         </button>
       </div>
 
-      {/* Active TAB CONTENT */}
+      {/* ------------------------
+          ACTIVE YEAR BLOCK
+         ------------------------ */}
       <div className="card" style={{ marginTop: 10 }}>
+        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <label style={{ fontSize: 18, fontWeight: 600 }}>
             Year Settings: {years[activeTab].year}
@@ -200,18 +201,50 @@ export default function PosterForm({ onConfigChange }) {
           )}
         </div>
 
+        {/* Year input */}
         <input
           type="text"
           value={years[activeTab].year}
-          onChange={(e) => updateYearValue(activeTab, e.target.value)}
-          style={{ marginTop: 10, marginBottom: 20 }}
+          onChange={(e) => updateYearField(activeTab, "year", e.target.value)}
+          style={{ marginTop: 10 }}
         />
 
-        <AllianceEditor
-          alliances={years[activeTab].alliances}
-          onChange={(v) => updateAllianceSet(activeTab, v)}
-          template={template}
+        {/* Notes */}
+        <label style={{ marginTop: 20 }}>Notes (Optional)</label>
+        <textarea
+          value={years[activeTab].notes}
+          onChange={(e) =>
+            updateYearField(activeTab, "notes", e.target.value)
+          }
+          placeholder="Optional notes for this year..."
+          style={{
+            width: "100%",
+            height: 70,
+            padding: "8px",
+            marginBottom: 20,
+            borderRadius: 8,
+            border: "1px solid #4b5563",
+            background: "#020617",
+            color: "#e5e7eb",
+          }}
         />
+
+        {/* Vote Section */}
+        <h3 style={{ marginTop: 20 }}>Vote Data</h3>
+        <AllianceEditor
+          alliances={years[activeTab].votes}
+          onChange={(v) => updateYearField(activeTab, "votes", v)}
+          mode="vote"
+        />
+
+        {/* Ward Section */}
+        <h3 style={{ marginTop: 30 }}>Ward Performance</h3>
+        <AllianceEditor
+          alliances={years[activeTab].wards}
+          onChange={(v) => updateYearField(activeTab, "wards", v)}
+          mode="wards"
+        />
+
       </div>
     </div>
   );

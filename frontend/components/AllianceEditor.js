@@ -1,7 +1,18 @@
 import React from "react";
 
-export default function AllianceEditor({ alliances, onChange, template }) {
-
+/**
+ * AllianceEditor
+ *
+ * Props:
+ *  - alliances: array of alliance objects
+ *  - onChange: callback(updatedArray)
+ *  - mode: "vote" | "wards"
+ *
+ * NOTE:
+ *  - "vote" mode → votes + percent
+ *  - "wards" mode → first + second + third
+ */
+export default function AllianceEditor({ alliances, onChange, mode = "vote" }) {
   const updateField = (index, field, value) => {
     const updated = alliances.map((a, i) =>
       i === index ? { ...a, [field]: value } : a
@@ -11,7 +22,7 @@ export default function AllianceEditor({ alliances, onChange, template }) {
 
   const addAlliance = () => {
     const defaultObj =
-      template === "wards"
+      mode === "wards"
         ? { alliance: "NEW", color: "#6b7280", first: 0, second: 0, third: 0 }
         : { alliance: "NEW", color: "#6b7280", votes: 0, percent: 0 };
 
@@ -27,7 +38,7 @@ export default function AllianceEditor({ alliances, onChange, template }) {
     <div>
       <div style={{ fontWeight: 600, marginBottom: 8 }}>Alliances</div>
 
-      {alliances.map((a, idx) => (
+      {(alliances || []).map((a, idx) => (
         <div className="alliance-row" key={idx}>
           {/* Alliance name */}
           <input
@@ -44,8 +55,10 @@ export default function AllianceEditor({ alliances, onChange, template }) {
             onChange={(e) => updateField(idx, "color", e.target.value)}
           />
 
-          {/* Template-specific fields */}
-          {template === "vote" && (
+          {/* ==========================
+              MODE: VOTE DATA
+              ========================== */}
+          {mode === "vote" && (
             <>
               <input
                 type="number"
@@ -68,7 +81,10 @@ export default function AllianceEditor({ alliances, onChange, template }) {
             </>
           )}
 
-          {template === "wards" && (
+          {/* ==========================
+              MODE: WARD DATA
+              ========================== */}
+          {mode === "wards" && (
             <>
               <input
                 type="number"

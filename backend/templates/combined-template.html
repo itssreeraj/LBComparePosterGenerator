@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Election Poster - Combined</title>
+  <link rel="stylesheet" href="base.css" />
+
+  <style>
+    /* LIGHT THEME */
+    body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    .poster {
+      width: 1080px;
+      margin: 0 auto;
+      padding: 48px;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+
+    .header .title {
+      font-size: 40px;
+      font-weight: 800;
+      color: #111;
+    }
+
+    .header .subtitle {
+      font-size: 20px;
+      color: #555;
+    }
+
+    .years-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-top: 32px;
+    }
+
+    .year-column {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .year-heading {
+      font-size: 28px;
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 16px;
+    }
+
+    .section-label {
+      margin-top: 18px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      letter-spacing: 0.05em;
+    }
+
+    /* ========================== */
+    /* Vote Table (Headers + Bars)*/
+    /* ========================== */
+    table.vote-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .vote-table th {
+      background: #e9ecef;
+      padding: 8px;
+      border: 1px solid #ccc;
+      font-weight: 700;
+      text-align: center;
+      color: #444;
+    }
+
+    .vote-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    /* Vote Bars */
+    .bar-track {
+      position: relative;
+      background: #e5e7eb;
+      border-radius: 6px;
+      height: 22px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      border-radius: 6px;
+      opacity: 0.9;
+    }
+
+    .bar-text {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+
+    /* ========================== */
+    /* Ward Performance TABLE     */
+    /* ========================== */
+    table.ward-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .ward-table th {
+      background: #e9ecef;
+      padding: 6px;
+      border: 1px solid #ccc;
+      font-weight: 700;
+      color: #444;
+      text-align: center;
+    }
+
+    .ward-table td {
+      padding: 6px;
+      border: 1px solid #ddd;
+      text-align: center;
+      color: #222;
+    }
+
+    .year-notes {
+      margin-top: 14px;
+      font-size: 13px;
+      font-style: italic;
+      color: #444;
+    }
+
+    .footer {
+      margin-top: 40px;
+      color: #333 !important;
+      font-size: 14px;
+      text-align: center;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="poster" id="poster-root"></div>
+
+  <script>
+    const data = __DATA__;
+    const root = document.getElementById("poster-root");
+
+    /* ==============================
+       HEADER
+    ===============================*/
+    const header = document.createElement("div");
+    header.className = "header";
+    header.innerHTML = `
+      <div class="title">${data.localbody}</div>
+      <div class="subtitle">${data.district ? "(" + data.district + ")" : ""}</div>
+    `;
+    root.appendChild(header);
+
+    /* ==============================
+       SIDE-BY-SIDE YEARS GRID
+    ===============================*/
+    const grid = document.createElement("div");
+    grid.className = "years-grid";
+
+    (data.years || []).forEach((y) => {
+      const col = document.createElement("div");
+      col.className = "year-column";
+
+      /* YEAR HEADER */
+      col.innerHTML += `<div class="year-heading">${y.year}</div>`;
+
+      /* ==============================
+         VOTE SHARE TABLE
+      ===============================*/
+      col.innerHTML += `<div class="section-label">VOTE SHARE</div>`;
+
+      const votes = Array.isArray(y.votes) ? y.votes : [];
+      const maxVotes = votes.reduce((m, r) => (r.votes > m ? r.votes : m), 0);
+
+      let voteTable = `
+        <table class="vote-table">
+          <thead>
+            <tr>
+              <th>Alliance</th>
+              <th>Votes</th>
+              <th>Vote %</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      votes.forEach((row) => {
+        const pct = maxVotes ? (row.votes / maxVotes) * 100 : 0;
+        const label = row.alliance || "";
+
+        const voteText =
+          (data.showVotes ? row.votes.toLocaleString() : "");
+
+        voteTable += `
+          <tr>
+            <td style="font-weight:600;color:${row.color}">${label}</td>
+
+            <td>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${pct}%; background:${row.color};"></div>
+                <div class="bar-text">${voteText}</div>
+              </div>
+            </td>
+
+            <td>${row.percent}%</td>
+          </tr>
+        `;
+      });
+
+      voteTable += `</tbody></table>`;
+      col.innerHTML += voteTable;
+
+      /* ==============================
+         WARD PERFORMANCE TABLE
+      ===============================*/
+      col.innerHTML += `<div class="section-label" style="margin-top:22px;">WARD PERFORMANCE</div>`;
+
+      const wards = Array.isArray(y.wards) ? y.wards : [];
+
+      let wardTable = `
+        <table class="ward-table">
+          <thead>
+            <tr>
+              <th>Alliance</th>
+              <th>Winner</th>
+              <th>Runner Up</th>
+              <th>3rd</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      wards.forEach((row) => {
+        wardTable += `
+          <tr>
+            <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
+            <td>${row.first}</td>
+            <td>${row.second}</td>
+            <td>${row.third}</td>
+          </tr>
+        `;
+      });
+
+      wardTable += `</tbody></table>`;
+      col.innerHTML += wardTable;
+
+      /* ==============================
+         NOTES
+      ===============================*/
+      if (y.notes && y.notes.trim() !== "") {
+        col.innerHTML += `<div class="year-notes">${y.notes}</div>`;
+      }
+
+      grid.appendChild(col);
+    });
+
+    root.appendChild(grid);
+
+    /* ==============================
+       FOOTER
+    ===============================*/
+    const footer = document.createElement("div");
+    footer.className = "footer";
+
+    footer.innerHTML = `
+      <span>Generated by <strong>CentreRightIN</strong></span>
+      &nbsp;·&nbsp;
+      <a href="https://x.com/CentrerightIN" 
+        style="color:#60a5fa;text-decoration:none;font-weight:600;"
+        target="_blank">@CentrerightIN</a>
+    `;
+
+    root.appendChild(footer);
+  </script>
+</body>
+</html>
