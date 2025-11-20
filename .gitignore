@@ -1,0 +1,51 @@
+# Node.js and npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build artifacts
+build/
+dist/
+out/
+public/build/ # If your React build outputs to public/build
+
+# IDE and OS specific files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+logs/
+*.log
+tmp/
+temp/
+
+# Dependency caches
+.npm/
+.yarn/
+
+# Test coverage reports
+coverage/
+
+# Next.js specific (if applicable)
+.next/
+
+# Create React App specific (if applicable)
+# If you ejected, you might have different build outputs.
+# The default CRA build output is handled by `build/` above.
+
+# Other common ignores
+*.swp
+*.bak
+*.swo
+*.orig
