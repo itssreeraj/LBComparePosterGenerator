@@ -7,7 +7,6 @@ async function generatePoster(data) {
   const templatePath = path.join(__dirname, "templates", templateName);
 
   let html = fs.readFileSync(templatePath, "utf8");
-  // Inject JSON payload
   html = html.replace("__DATA__", JSON.stringify(data));
 
   const browser = await puppeteer.launch({
@@ -16,18 +15,36 @@ async function generatePoster(data) {
   });
 
   const page = await browser.newPage();
+
+  // Mobile-friendly width, auto-height
   await page.setViewport({
-    width: 2000,
-    height: data.height || 2500,
+    width: 1080,
+    height: 10,
     deviceScaleFactor: 2,
   });
 
   await page.setContent(html, { waitUntil: "networkidle0" });
 
-  // Return base64-encoded PNG
+  // Measure actual content height
+  const rect = await page.evaluate(() => {
+    const r = document.body.getBoundingClientRect();
+    return {
+      x: 0,
+      y: 0,
+      width: Math.max(r.width, 1080),
+      height: Math.max(r.height, 200) // avoid clipping too small
+    };
+  });
+
   const imageBase64 = await page.screenshot({
     type: "png",
-    fullPage: true,
+    fullPage: false,
+    clip: {
+      x: 0,
+      y: 0,
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height)
+    },
     encoding: "base64",
   });
 

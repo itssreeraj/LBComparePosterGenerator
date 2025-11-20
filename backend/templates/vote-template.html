@@ -2,76 +2,248 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Election Poster - Vote</title>
+  <title>Election Poster – Vote Results</title>
   <link rel="stylesheet" href="base.css" />
+  <style>
+    .year-block {
+      margin-top: 40px;
+      margin-bottom: 20px;
+    }
+
+    .table-header,
+    .row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .table-header {
+      font-size: 18px;
+      opacity: 0.9;
+      padding-bottom: 6px;
+    }
+
+    .row {
+      font-size: 18px;
+    }
+
+    @media (max-width: 700px) {
+      .year-block {
+        margin-bottom: 20px;
+      }
+
+      #poster-root > div {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    .alliance-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 26px;
+    }
+
+    .tag {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .vote-bar-wrapper {
+      position: relative;
+      height: 32px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .vote-bar-fill {
+      height: 100%;
+      border-radius: 8px;
+    }
+
+    .vote-text {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 600;
+      z-index: 5;
+    }
+
+    .percent-cell {
+      font-size: 26px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-25deg);
+      font-size: 180px;
+      font-weight: 900;
+      opacity: 0.06;
+      color: #ffffff;
+      pointer-events: none;
+      user-select: none;
+      white-space: nowrap;
+      letter-spacing: 0.25em;
+      z-index: 0;
+    }
+
+    .poster {
+      padding-bottom: 0 !important;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+    }
+
+    #poster-root {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+
+  </style>
 </head>
+
 <body>
+  <div class="watermark">CENTRERIGHTIN</div>
   <div class="poster" id="poster-root"></div>
 
   <script>
     const data = __DATA__;
-
     const root = document.getElementById("poster-root");
 
+    // TITLE
     const header = document.createElement("div");
     header.className = "header";
 
     const title = document.createElement("div");
     title.className = "title";
-    title.textContent = data.localbody || "Localbody Name";
+    title.textContent = data.localbody;
 
     const subtitle = document.createElement("div");
     subtitle.className = "subtitle";
-    const district = data.district ? `(${data.district})` : "";
-    subtitle.textContent = district;
+    subtitle.textContent = data.district ? `(${data.district})` : "";
 
     header.appendChild(title);
     header.appendChild(subtitle);
     root.appendChild(header);
 
-    (data.years || []).forEach((yearBlock) => {
-      const sectionTitle = document.createElement("div");
-      sectionTitle.className = "section-title";
-      sectionTitle.textContent = yearBlock.year || "Year";
-      root.appendChild(sectionTitle);
+    // Render YEARS
+    const years = data.years || [];
+    const yearContainer = document.createElement("div");
 
-      (yearBlock.rows || []).forEach((row) => {
+    yearContainer.style.display = "grid";
+    yearContainer.style.gridTemplateColumns = years.length === 2 ? "1fr 1fr" : "1fr";
+    yearContainer.style.gap = "32px";
+
+    root.appendChild(yearContainer);
+    years.forEach((yearBlock) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "year-block";
+
+      const yearTitle = document.createElement("div");
+      yearTitle.className = "section-title";
+      yearTitle.textContent = yearBlock.year;
+      wrapper.appendChild(yearTitle);
+
+      // Table header
+      const tableHeader = document.createElement("div");
+      tableHeader.className = "table-header";
+      tableHeader.innerHTML = `
+        <div>Alliance</div>
+        <div>Votes</div>
+        <div>Vote %</div>
+      `;
+      wrapper.appendChild(tableHeader);
+
+      // Calculate max votes for proportional bar size
+      const maxVotes = Math.max(...yearBlock.rows.map(r => r.votes || 0));
+
+      yearBlock.rows.forEach((row) => {
         const rowDiv = document.createElement("div");
         rowDiv.className = "row";
 
+        // Alliance cell
+        const allianceCell = document.createElement("div");
+        allianceCell.className = "alliance-cell";
+
         const tag = document.createElement("div");
         tag.className = "tag";
-        tag.textContent = row.alliance || "Alliance";
-        if (row.color) {
-          tag.style.background = row.color;
-        } else {
-          tag.style.background = "#4b5563";
-        }
+        tag.style.background = row.color || "#4b5563";
 
-        rowDiv.appendChild(tag);
+        const text = document.createElement("div");
+        text.textContent = row.alliance;
 
-        if (data.showVotes) {
-          const value = document.createElement("div");
-          value.className = "value";
-          value.textContent = row.votes != null ? row.votes.toLocaleString() : "-";
-          rowDiv.appendChild(value);
-        }
+        allianceCell.appendChild(tag);
+        allianceCell.appendChild(text);
 
-        if (data.showPercent) {
-          const percent = document.createElement("div");
-          percent.className = "percent";
-          percent.textContent = row.percent != null ? row.percent + "%" : "-";
-          rowDiv.appendChild(percent);
-        }
+        // Votes bar
+        const voteCell = document.createElement("div");
+        
+        const wrapperDiv = document.createElement("div");
+        wrapperDiv.className = "vote-bar-wrapper";
 
-        root.appendChild(rowDiv);
+        const barFill = document.createElement("div");
+        barFill.className = "vote-bar-fill";
+        barFill.style.background = row.color || "#4b5563";
+
+        const proportion = maxVotes ? (row.votes / maxVotes) : 0;
+        barFill.style.width = (proportion * 100) + "%";
+
+        const voteText = document.createElement("div");
+        voteText.className = "vote-text";
+        voteText.textContent = row.votes?.toLocaleString() ?? "-";
+
+        wrapperDiv.appendChild(barFill);
+        wrapperDiv.appendChild(voteText);
+
+        voteCell.appendChild(wrapperDiv);
+
+        // Percent
+        const percentCell = document.createElement("div");
+        percentCell.className = "percent-cell";
+        percentCell.textContent = row.percent != null ? row.percent + "%" : "-";
+
+        // Append into row
+        rowDiv.appendChild(allianceCell);
+        rowDiv.appendChild(voteCell);
+        rowDiv.appendChild(percentCell);
+
+        wrapper.appendChild(rowDiv);
       });
+
+      yearContainer.appendChild(wrapper);
     });
 
     const footer = document.createElement("div");
     footer.className = "footer";
-    footer.textContent = data.footerText || "Generated with Election Poster Generator";
+
+    footer.innerHTML = `
+      <span>Generated by <strong>CentreRightIN</strong></span>
+      &nbsp;·&nbsp;
+      <a href="https://x.com/CentrerightIN" 
+        style="color:#60a5fa;text-decoration:none;font-weight:600;"
+        target="_blank">@CentrerightIN</a>
+    `;
+
     root.appendChild(footer);
+
   </script>
 </body>
 </html>
