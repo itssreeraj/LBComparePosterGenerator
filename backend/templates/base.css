@@ -21,27 +21,11 @@ body {
 }
 
 .header {
-  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  margin-bottom: 24px;
 }
 
-.title {
-  font-size: 48px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.subtitle {
-  font-size: 24px;
-  opacity: 0.75;
-}
-
-.section-title {
-  margin-top: 32px;
-  margin-bottom: 16px;
-  font-size: 28px;
-  font-weight: 700;
-  color: #e5e7eb;
-}
 
 .row {
   display: flex;
