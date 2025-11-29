@@ -23,10 +23,15 @@ async function generatePoster(data) {
   });
 
   const page = await browser.newPage();
+
+  await page.evaluate(() => {
+    document.body.style.zoom = "200%"; 
+  });
+
   await page.setViewport({
-    width: 2000,
-    height: data.height || 2500,
-    deviceScaleFactor: 2,
+    width: 3840,
+    height: data.height || 5000,
+    deviceScaleFactor: 1,
   });
 
   await page.setContent(html, { waitUntil: "networkidle0" });

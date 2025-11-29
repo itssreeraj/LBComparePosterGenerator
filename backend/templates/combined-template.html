@@ -35,9 +35,10 @@
       color: #555;
     }
 
+    /* THREE-COLUMN GRID */
     .years-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 32px;
       margin-top: 32px;
     }
@@ -47,6 +48,7 @@
       border: 1px solid #ddd;
       border-radius: 12px;
       padding: 20px;
+      box-sizing: border-box;
     }
 
     .year-heading {
@@ -54,25 +56,25 @@
       font-weight: 700;
       color: #222;
       margin-bottom: 16px;
+      text-align: center;
     }
 
     .section-label {
       margin-top: 18px;
       margin-bottom: 10px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 700;
       color: #333;
-      letter-spacing: 0.05em;
+      text-align: left;
+      letter-spacing: 0.03em;
     }
 
-    /* ========================== */
-    /* Vote Table (Headers + Bars)*/
-    /* ========================== */
+    /* Vote Table */
     table.vote-table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12px;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .vote-table th {
@@ -80,13 +82,13 @@
       padding: 8px;
       border: 1px solid #ccc;
       font-weight: 700;
-      text-align: center;
       color: #444;
+      text-align: center;
     }
 
     .vote-table td {
       border: 1px solid #ddd;
-      padding: 8px;
+      padding: 6px;
       text-align: center;
       vertical-align: middle;
     }
@@ -111,10 +113,7 @@
 
     .bar-text {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 22px;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -125,17 +124,17 @@
       pointer-events: none;
     }
 
-    /* ========================== */
-    /* Ward Performance TABLE     */
-    /* ========================== */
-    table.ward-table {
+    /* Ward / Booth Tables */
+    table.ward-table,
+    table.booth-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 14px;
+      margin-top: 8px;
+      font-size: 13px;
     }
 
-    .ward-table th {
+    .ward-table th,
+    .booth-table th {
       background: #e9ecef;
       padding: 6px;
       border: 1px solid #ccc;
@@ -144,13 +143,15 @@
       text-align: center;
     }
 
-    .ward-table td {
+    .ward-table td,
+    .booth-table td {
       padding: 6px;
       border: 1px solid #ddd;
       text-align: center;
       color: #222;
     }
 
+    /* Notes */
     .year-notes {
       margin-top: 14px;
       font-size: 13px;
@@ -158,6 +159,7 @@
       color: #444;
     }
 
+    /* Footer */
     .footer {
       margin-top: 40px;
       color: #333 !important;
@@ -175,9 +177,7 @@
     const data = __DATA__;
     const root = document.getElementById("poster-root");
 
-    /* ==============================
-       HEADER
-    ===============================*/
+    // HEADER
     const header = document.createElement("div");
     header.className = "header";
     header.innerHTML = `
@@ -186,9 +186,7 @@
     `;
     root.appendChild(header);
 
-    /* ==============================
-       SIDE-BY-SIDE YEARS GRID
-    ===============================*/
+    // 3-COLUMN GRID
     const grid = document.createElement("div");
     grid.className = "years-grid";
 
@@ -196,92 +194,170 @@
       const col = document.createElement("div");
       col.className = "year-column";
 
-      /* YEAR HEADER */
+      // Column heading
       col.innerHTML += `<div class="year-heading">${y.year}</div>`;
 
-      /* ==============================
-         VOTE SHARE TABLE
-      ===============================*/
-      col.innerHTML += `<div class="section-label">VOTE SHARE</div>`;
+      /* =============================
+         NORMAL YEARS (2015, 2020)
+      ==============================*/
+      const isGeneral = y.year.includes("2024");
 
-      const votes = Array.isArray(y.votes) ? y.votes : [];
-      const maxVotes = votes.reduce((m, r) => (r.votes > m ? r.votes : m), 0);
+      if (!isGeneral) {
+        /* ----------------------------
+           VOTE SHARE TABLE
+        -----------------------------*/
+        col.innerHTML += `<div class="section-label">VOTE SHARE</div>`;
 
-      let voteTable = `
-        <table class="vote-table">
-          <thead>
-            <tr>
-              <th>Alliance</th>
-              <th>Votes</th>
-              <th>Vote %</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
+        const votes = Array.isArray(y.votes) ? y.votes : [];
+        const maxVotes = votes.reduce((m, r) => (r.votes > m ? r.votes : m), 0);
 
-      votes.forEach((row) => {
-        const pct = maxVotes ? (row.votes / maxVotes) * 100 : 0;
-        const label = row.alliance || "";
-
-        const voteText =
-          (data.showVotes ? row.votes.toLocaleString() : "");
-
-        voteTable += `
-          <tr>
-            <td style="font-weight:600;color:${row.color}">${label}</td>
-
-            <td>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:${pct}%; background:${row.color};"></div>
-                <div class="bar-text">${voteText}</div>
-              </div>
-            </td>
-
-            <td>${row.percent}%</td>
-          </tr>
+        let voteTable = `
+          <table class="vote-table">
+            <thead>
+              <tr>
+                <th>Alliance</th>
+                <th>Votes</th>
+                <th>Vote %</th>
+              </tr>
+            </thead>
+            <tbody>
         `;
-      });
 
-      voteTable += `</tbody></table>`;
-      col.innerHTML += voteTable;
+        votes.forEach((row) => {
+          const pct = maxVotes ? (row.votes / maxVotes) * 100 : 0;
+          const voteText = data.showVotes ? row.votes.toLocaleString() : "";
 
-      /* ==============================
-         WARD PERFORMANCE TABLE
-      ===============================*/
-      col.innerHTML += `<div class="section-label" style="margin-top:22px;">WARD PERFORMANCE</div>`;
-
-      const wards = Array.isArray(y.wards) ? y.wards : [];
-
-      let wardTable = `
-        <table class="ward-table">
-          <thead>
+          voteTable += `
             <tr>
-              <th>Alliance</th>
-              <th>Winner</th>
-              <th>Runner Up</th>
-              <th>3rd</th>
+              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
+
+              <td>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${pct}%; background:${row.color};"></div>
+                  <div class="bar-text">${voteText}</div>
+                </div>
+              </td>
+
+              <td>${row.percent}%</td>
             </tr>
-          </thead>
-          <tbody>
-      `;
+          `;
+        });
 
-      wards.forEach((row) => {
-        wardTable += `
-          <tr>
-            <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
-            <td>${row.first}</td>
-            <td>${row.second}</td>
-            <td>${row.third}</td>
-          </tr>
+        voteTable += `</tbody></table>`;
+        col.innerHTML += voteTable;
+
+        /* ----------------------------
+           WARD PERFORMANCE TABLE
+        -----------------------------*/
+        const wards = Array.isArray(y.wards) ? y.wards : [];
+        col.innerHTML += `<div class="section-label">WARD PERFORMANCE</div>`;
+
+        let wardTable = `
+          <table class="ward-table">
+            <thead>
+              <tr>
+                <th>Alliance</th>
+                <th>Winner</th>
+                <th>Runner Up</th>
+                <th>3rd</th>
+              </tr>
+            </thead>
+            <tbody>
         `;
-      });
 
-      wardTable += `</tbody></table>`;
-      col.innerHTML += wardTable;
+        wards.forEach((row) => {
+          wardTable += `
+            <tr>
+              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
+              <td>${row.winner}</td>
+              <td>${row.runnerUp}</td>
+              <td>${row.third}</td>
+            </tr>
+          `;
+        });
 
-      /* ==============================
-         NOTES
-      ===============================*/
+        wardTable += `</tbody></table>`;
+        col.innerHTML += wardTable;
+      }
+
+      /* =============================
+         2024 GE COLUMN
+      ==============================*/
+      else {
+        /* GE Vote Share */
+        col.innerHTML += `<div class="section-label">2024 GE – VOTE SHARE</div>`;
+
+        const gv = Array.isArray(y.generalVotes) ? y.generalVotes : [];
+        const maxGV = gv.reduce((m, r) => (r.votes > m ? r.votes : m), 0);
+
+        let geVoteTable = `
+          <table class="vote-table">
+            <thead>
+              <tr>
+                <th>Alliance</th>
+                <th>Votes</th>
+                <th>Vote %</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        gv.forEach((row) => {
+          const pct = maxGV ? (row.votes / maxGV) * 100 : 0;
+
+          geVoteTable += `
+            <tr>
+              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
+
+              <td>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${pct}%; background:${row.color};"></div>
+                  <div class="bar-text">${row.votes.toLocaleString()}</div>
+                </div>
+              </td>
+
+              <td>${row.percent}%</td>
+            </tr>
+          `;
+        });
+
+        geVoteTable += `</tbody></table>`;
+        col.innerHTML += geVoteTable;
+
+        /* GE Booth Summary */
+        col.innerHTML += `<div class="section-label">2024 GE – BOOTH SUMMARY</div>`;
+
+        const gb = Array.isArray(y.generalBooths) ? y.generalBooths : [];
+
+        let boothTable = `
+          <table class="booth-table">
+            <thead>
+              <tr>
+                <th>Alliance</th>
+                <th>Winner</th>
+                <th>Runner Up</th>
+                <th>3rd</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        gb.forEach((row) => {
+          boothTable += `
+            <tr>
+              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
+              <td>${row.winner}</td>
+              <td>${row.runnerUp}</td>
+              <td>${row.third}</td>
+            </tr>
+          `;
+        });
+
+        boothTable += `</tbody></table>`;
+        col.innerHTML += boothTable;
+      }
+
+      /* NOTES */
       if (y.notes && y.notes.trim() !== "") {
         col.innerHTML += `<div class="year-notes">${y.notes}</div>`;
       }
@@ -291,21 +367,16 @@
 
     root.appendChild(grid);
 
-    /* ==============================
-       FOOTER
-    ===============================*/
+    // FOOTER (Custom Branding)
     const footer = document.createElement("div");
     footer.className = "footer";
-
     footer.innerHTML = `
-      <span>Generated by <strong>CentreRightIN</strong></span>
-      &nbsp;·&nbsp;
-      <a href="https://x.com/CentrerightIN" 
-        style="color:#60a5fa;text-decoration:none;font-weight:600;"
-        target="_blank">@CentrerightIN</a>
+      <span class="footer-brand">@centerrightin</span>
+      <span class="footer-separator">·</span>
+      <span class="footer-note">Compiled by CenterRightIn</span>
     `;
-
     root.appendChild(footer);
+
   </script>
 </body>
 </html>

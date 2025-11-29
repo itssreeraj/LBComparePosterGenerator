@@ -4,15 +4,16 @@ import React from "react";
  * AllianceEditor
  *
  * Props:
- *  - alliances: array of alliance objects
- *  - onChange: callback(updatedArray)
- *  - mode: "vote" | "wards"
- *
- * NOTE:
- *  - "vote" mode → votes + percent
- *  - "wards" mode → first + second + third
+ *  - alliances: array
+ *  - onChange: callback
+ *  - mode: "vote" | "wards" | "generalVotes" | "generalBooths"
  */
-export default function AllianceEditor({ alliances, onChange, mode = "vote" }) {
+
+export default function AllianceEditor({
+  alliances,
+  onChange,
+  mode = "vote"
+}) {
   const updateField = (index, field, value) => {
     const updated = alliances.map((a, i) =>
       i === index ? { ...a, [field]: value } : a
@@ -21,18 +22,35 @@ export default function AllianceEditor({ alliances, onChange, mode = "vote" }) {
   };
 
   const addAlliance = () => {
-    const defaultObj =
-      mode === "wards"
-        ? { alliance: "NEW", color: "#6b7280", first: 0, second: 0, third: 0 }
-        : { alliance: "NEW", color: "#6b7280", votes: 0, percent: 0 };
+    const defaults = {
+      alliance: "NEW",
+      color: "#6b7280"
+    };
 
-    onChange([...alliances, defaultObj]);
+    if (mode === "vote" || mode === "generalVotes") {
+      defaults.votes = 0;
+      defaults.percent = 0;
+    } else {
+      defaults.winner = 0;
+      defaults.runnerUp = 0;
+      defaults.third = 0;
+    }
+
+    onChange([...alliances, defaults]);
   };
 
   const removeAlliance = (index) => {
-    const updated = alliances.filter((_, i) => i !== index);
-    onChange(updated);
+    onChange(alliances.filter((_, i) => i !== index));
   };
+
+  const numberField = (label, val, f) => (
+    <input
+      type="number"
+      value={val}
+      placeholder={label}
+      onChange={(e) => updateField(f, label.toLowerCase(), Number(e.target.value) || 0)}
+    />
+  );
 
   return (
     <div>
@@ -45,7 +63,7 @@ export default function AllianceEditor({ alliances, onChange, mode = "vote" }) {
             type="text"
             value={a.alliance}
             onChange={(e) => updateField(idx, "alliance", e.target.value)}
-            placeholder="Alliance (LDF, UDF, NDA...)"
+            placeholder="Alliance"
           />
 
           {/* Color */}
@@ -55,10 +73,8 @@ export default function AllianceEditor({ alliances, onChange, mode = "vote" }) {
             onChange={(e) => updateField(idx, "color", e.target.value)}
           />
 
-          {/* ==========================
-              MODE: VOTE DATA
-              ========================== */}
-          {mode === "vote" && (
+          {/* ===== VOTE MODE ===== */}
+          {(mode === "vote" || mode === "generalVotes") && (
             <>
               <input
                 type="number"
@@ -81,27 +97,25 @@ export default function AllianceEditor({ alliances, onChange, mode = "vote" }) {
             </>
           )}
 
-          {/* ==========================
-              MODE: WARD DATA
-              ========================== */}
-          {mode === "wards" && (
+          {/* ===== WARD / BOOTH MODE ===== */}
+          {(mode === "wards" || mode === "generalBooths") && (
             <>
               <input
                 type="number"
-                value={a.first}
+                value={a.winner}
                 onChange={(e) =>
-                  updateField(idx, "first", Number(e.target.value) || 0)
+                  updateField(idx, "winner", Number(e.target.value) || 0)
                 }
-                placeholder="1st"
+                placeholder="Winner"
               />
 
               <input
                 type="number"
-                value={a.second}
+                value={a.runnerUp}
                 onChange={(e) =>
-                  updateField(idx, "second", Number(e.target.value) || 0)
+                  updateField(idx, "runnerUp", Number(e.target.value) || 0)
                 }
-                placeholder="2nd"
+                placeholder="Runner Up"
               />
 
               <input
@@ -115,7 +129,7 @@ export default function AllianceEditor({ alliances, onChange, mode = "vote" }) {
             </>
           )}
 
-          {/* Remove button */}
+          {/* Remove */}
           <button
             type="button"
             className="secondary"
