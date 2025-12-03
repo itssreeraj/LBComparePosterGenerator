@@ -1,382 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Election Poster - Combined</title>
-  <link rel="stylesheet" href="base.css" />
+<meta charset="UTF-8" />
+<title>Election Poster - Combined</title>
 
-  <style>
-    /* LIGHT THEME */
-    body {
-      margin: 0;
-      padding: 0;
-      background: #ffffff !important;
-      font-family: Inter, system-ui, sans-serif;
-    }
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
 
-    .poster {
-      width: 1080px;
-      margin: 0 auto;
-      padding: 48px;
-      background: #ffffff;
-      border-radius: 12px;
-      border: 1px solid #ddd;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }
+<style>
+/* ========= THEME ========= */
+body {
+  margin: 0;
+  padding: 0;
+  background: #0b0f19 !important;
+  font-family: "Inter", system-ui, sans-serif;
+  color: #e5e7eb;
+}
 
-    .header .title {
-      font-size: 40px;
-      font-weight: 800;
-      color: #111;
-    }
+.poster {
+  width: 1080px;
+  margin: 0 auto;
+  padding: 48px;
+  background: #0f1624;
+  border-radius: 18px;
+  border: 1px solid #1f2937;
+  box-shadow: 0 0 40px rgba(0,0,0,0.45);
+  position: relative;
+}
 
-    .header .subtitle {
-      font-size: 20px;
-      color: #555;
-    }
+/* ========= HEADER ========= */
 
-    /* THREE-COLUMN GRID */
-    .years-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 32px;
-      margin-top: 32px;
-    }
+.header {
+  margin-bottom: 24px;
+}
 
-    .year-column {
-      background: #f8f9fa;
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 20px;
-      box-sizing: border-box;
-    }
+.header .district {
+  font-size: 16px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
 
-    .year-heading {
-      font-size: 28px;
-      font-weight: 700;
-      color: #222;
-      margin-bottom: 16px;
-      text-align: center;
-    }
+.header .localbody {
+  font-size: 30px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
-    .section-label {
-      margin-top: 18px;
-      margin-bottom: 10px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #333;
-      text-align: left;
-      letter-spacing: 0.03em;
-    }
+/* Badges */
+.badge {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: white;
+}
 
-    /* Vote Table */
-    table.vote-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 12px;
-      font-size: 13px;
-    }
+.badge-localbody {
+  background: #059669; /* green */
+}
 
-    .vote-table th {
-      background: #e9ecef;
-      padding: 8px;
-      border: 1px solid #ccc;
-      font-weight: 700;
-      color: #444;
-      text-align: center;
-    }
+.badge-ge {
+  background: #7c3aed; /* purple */
+}
 
-    .vote-table td {
-      border: 1px solid #ddd;
-      padding: 6px;
-      text-align: center;
-      vertical-align: middle;
-    }
+/* ========= GRID (will be overridden dynamically) ========= */
 
-    /* Vote Bars */
-    .bar-track {
-      position: relative;
-      background: #e5e7eb;
-      border-radius: 6px;
-      height: 22px;
-      overflow: hidden;
-    }
+.years-grid {
+  display: grid;
+  gap: 28px;
+  margin-top: 32px;
+}
 
-    .bar-fill {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      border-radius: 6px;
-      opacity: 0.9;
-    }
+/* ========= YEAR CARD ========= */
 
-    .bar-text {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-      pointer-events: none;
-    }
+.year-column {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
 
-    /* Ward / Booth Tables */
-    table.ward-table,
-    table.booth-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
-      font-size: 13px;
-    }
+/* Year heading + badge row */
+.year-heading-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
 
-    .ward-table th,
-    .booth-table th {
-      background: #e9ecef;
-      padding: 6px;
-      border: 1px solid #ccc;
-      font-weight: 700;
-      color: #444;
-      text-align: center;
-    }
+.year-heading {
+  font-size: 20px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #f3f4f6;
+  background: #1f2937;
+  border: 1px solid #2f3b4a;
+}
 
-    .ward-table td,
-    .booth-table td {
-      padding: 6px;
-      border: 1px solid #ddd;
-      text-align: center;
-      color: #222;
-    }
+/* Section Title */
+.section-label {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
-    /* Notes */
-    .year-notes {
-      margin-top: 14px;
-      font-size: 13px;
-      font-style: italic;
-      color: #444;
-    }
+/* ========= TABLES ========= */
 
-    /* Footer */
-    .footer {
-      margin-top: 40px;
-      color: #333 !important;
-      font-size: 14px;
-      text-align: center;
-      opacity: 0.8;
-    }
-  </style>
+.vote-table,
+.ward-table,
+.booth-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.vote-table th,
+.ward-table th,
+.booth-table th {
+  background: #1f2937;
+  padding: 7px;
+  border: 1px solid #374151;
+  font-weight: 700;
+  color: #d1d5db;
+  text-align: center;
+}
+
+.vote-table td,
+.ward-table td,
+.booth-table td {
+  border: 1px solid #2d3642;
+  padding: 6px;
+  text-align: center;
+  color: #e5e7eb;
+}
+
+/* Alliance circles */
+.alliance-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+/* Vote bars */
+.bar-track {
+  background: #374151;
+  border-radius: 6px;
+  height: 22px;
+  position: relative;
+  overflow: hidden;
+}
+
+.bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  border-radius: 6px;
+}
+
+.bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  pointer-events: none;
+}
+
+/* Notes */
+.year-notes {
+  margin-top: 12px;
+  font-size: 13px;
+  font-style: italic;
+  color: #9ca3af;
+  background: #1f2937;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+/* ========= WATERMARK ========= */
+
+.watermark {
+  position: absolute;
+  bottom: 20px;
+  right: 24px;
+  opacity: 0.22;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  pointer-events: none;
+}
+</style>
 </head>
 
+
 <body>
-  <div class="poster" id="poster-root"></div>
+<div class="poster" id="poster-root"></div>
 
-  <script>
-    const data = __DATA__;
-    const root = document.getElementById("poster-root");
+<script>
+const data = __DATA__;
+const root = document.getElementById("poster-root");
 
-    // HEADER
-    const header = document.createElement("div");
-    header.className = "header";
-    header.innerHTML = `
-      <div class="title">${data.localbody}</div>
-      <div class="subtitle">${data.district ? "(" + data.district + ")" : ""}</div>
+/* ================= HEADER ================= */
+const header = document.createElement("div");
+header.className = "header";
+
+header.innerHTML = `
+  <div class="district">${data.district}</div>
+  <div class="localbody">
+    ${data.localbody}
+  </div>
+`;
+
+root.appendChild(header);
+
+/* ================= GRID (AUTO LAYOUT) ================= */
+const grid = document.createElement("div");
+grid.className = "years-grid";
+
+const yearCount = (data.years || []).length;
+
+if (yearCount <= 3) {
+  grid.style.gridTemplateColumns = "repeat(3, 1fr)";
+} else if (yearCount <= 6) {
+  grid.style.gridTemplateColumns = "repeat(2, 1fr)";
+} else {
+  grid.style.gridTemplateColumns = "repeat(1, 1fr)";
+}
+
+/* ================= YEAR CARDS ================= */
+(data.years || []).forEach((y) => {
+  const col = document.createElement("div");
+  col.className = "year-column";
+
+  const isGE = y.year.toString().includes("GE");
+
+  /* YEAR HEADING WITH BADGE */
+  col.innerHTML += `
+    <div class="year-heading-row">
+      <div class="year-heading">${y.year}</div>
+      <span class="badge ${isGE ? "badge-ge" : "badge-localbody"}">
+        ${isGE ? "GE" : "LOCALBODY"}
+      </span>
+    </div>
+  `;
+
+  /* ================= LOCALBODY ================= */
+  if (!isGE) {
+    col.innerHTML += `<div class="section-label">Vote Share</div>`;
+
+    const votes = y.votes || [];
+    const maxVotes = votes.reduce((m, r) => Math.max(m, r.votes), 0);
+
+    let voteTable = `
+      <table class="vote-table">
+        <thead>
+          <tr><th>Alliance</th><th>Votes</th><th>%</th></tr>
+        </thead><tbody>
     `;
-    root.appendChild(header);
 
-    // 3-COLUMN GRID
-    const grid = document.createElement("div");
-    grid.className = "years-grid";
+    votes.forEach((row) => {
+      const pct = maxVotes ? (row.votes / maxVotes) * 100 : 0;
 
-    (data.years || []).forEach((y) => {
-      const col = document.createElement("div");
-      col.className = "year-column";
-
-      // Column heading
-      col.innerHTML += `<div class="year-heading">${y.year}</div>`;
-
-      /* =============================
-         NORMAL YEARS (2015, 2020)
-      ==============================*/
-      const isGeneral = y.year.includes("2024");
-
-      if (!isGeneral) {
-        /* ----------------------------
-           VOTE SHARE TABLE
-        -----------------------------*/
-        col.innerHTML += `<div class="section-label">VOTE SHARE</div>`;
-
-        const votes = Array.isArray(y.votes) ? y.votes : [];
-        const maxVotes = votes.reduce((m, r) => (r.votes > m ? r.votes : m), 0);
-
-        let voteTable = `
-          <table class="vote-table">
-            <thead>
-              <tr>
-                <th>Alliance</th>
-                <th>Votes</th>
-                <th>Vote %</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        votes.forEach((row) => {
-          const pct = maxVotes ? (row.votes / maxVotes) * 100 : 0;
-          const voteText = data.showVotes ? row.votes.toLocaleString() : "";
-
-          voteTable += `
-            <tr>
-              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
-
-              <td>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:${pct}%; background:${row.color};"></div>
-                  <div class="bar-text">${voteText}</div>
-                </div>
-              </td>
-
-              <td>${row.percent}%</td>
-            </tr>
-          `;
-        });
-
-        voteTable += `</tbody></table>`;
-        col.innerHTML += voteTable;
-
-        /* ----------------------------
-           WARD PERFORMANCE TABLE
-        -----------------------------*/
-        const wards = Array.isArray(y.wards) ? y.wards : [];
-        col.innerHTML += `<div class="section-label">WARD PERFORMANCE</div>`;
-
-        let wardTable = `
-          <table class="ward-table">
-            <thead>
-              <tr>
-                <th>Alliance</th>
-                <th>Winner</th>
-                <th>Runner Up</th>
-                <th>3rd</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        wards.forEach((row) => {
-          wardTable += `
-            <tr>
-              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
-              <td>${row.winner}</td>
-              <td>${row.runnerUp}</td>
-              <td>${row.third}</td>
-            </tr>
-          `;
-        });
-
-        wardTable += `</tbody></table>`;
-        col.innerHTML += wardTable;
-      }
-
-      /* =============================
-         2024 GE COLUMN
-      ==============================*/
-      else {
-        /* GE Vote Share */
-        col.innerHTML += `<div class="section-label">2024 GE – VOTE SHARE</div>`;
-
-        const gv = Array.isArray(y.generalVotes) ? y.generalVotes : [];
-        const maxGV = gv.reduce((m, r) => (r.votes > m ? r.votes : m), 0);
-
-        let geVoteTable = `
-          <table class="vote-table">
-            <thead>
-              <tr>
-                <th>Alliance</th>
-                <th>Votes</th>
-                <th>Vote %</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        gv.forEach((row) => {
-          const pct = maxGV ? (row.votes / maxGV) * 100 : 0;
-
-          geVoteTable += `
-            <tr>
-              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
-
-              <td>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:${pct}%; background:${row.color};"></div>
-                  <div class="bar-text">${row.votes.toLocaleString()}</div>
-                </div>
-              </td>
-
-              <td>${row.percent}%</td>
-            </tr>
-          `;
-        });
-
-        geVoteTable += `</tbody></table>`;
-        col.innerHTML += geVoteTable;
-
-        /* GE Booth Summary */
-        col.innerHTML += `<div class="section-label">2024 GE – BOOTH SUMMARY</div>`;
-
-        const gb = Array.isArray(y.generalBooths) ? y.generalBooths : [];
-
-        let boothTable = `
-          <table class="booth-table">
-            <thead>
-              <tr>
-                <th>Alliance</th>
-                <th>Winner</th>
-                <th>Runner Up</th>
-                <th>3rd</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        gb.forEach((row) => {
-          boothTable += `
-            <tr>
-              <td style="font-weight:600;color:${row.color}">${row.alliance}</td>
-              <td>${row.winner}</td>
-              <td>${row.runnerUp}</td>
-              <td>${row.third}</td>
-            </tr>
-          `;
-        });
-
-        boothTable += `</tbody></table>`;
-        col.innerHTML += boothTable;
-      }
-
-      /* NOTES */
-      if (y.notes && y.notes.trim() !== "") {
-        col.innerHTML += `<div class="year-notes">${y.notes}</div>`;
-      }
-
-      grid.appendChild(col);
+      voteTable += `
+        <tr>
+          <td>
+            <span class="alliance-dot" style="background:${row.color}"></span>
+            ${row.alliance}
+          </td>
+          <td>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%;background:${row.color};"></div>
+              <div class="bar-text">${row.votes}</div>
+            </div>
+          </td>
+          <td>${row.percent}%</td>
+        </tr>
+      `;
     });
 
-    root.appendChild(grid);
+    voteTable += `</tbody></table>`;
+    col.innerHTML += voteTable;
 
-    // FOOTER (Custom Branding)
-    const footer = document.createElement("div");
-    footer.className = "footer";
-    footer.innerHTML = `
-      <span class="footer-brand">@centerrightin</span>
-      <span class="footer-separator">·</span>
-      <span class="footer-note">Compiled by CenterRightIn</span>
+    /* Ward Performance */
+    col.innerHTML += `<div class="section-label">Ward Performance</div>`;
+
+    let wardTable = `
+      <table class="ward-table">
+        <thead><tr><th>Alliance</th><th>Win</th><th>2nd</th><th>3rd</th></tr></thead>
+        <tbody>
     `;
-    root.appendChild(footer);
 
-  </script>
+    (y.wards || []).forEach((row) => {
+      wardTable += `
+        <tr>
+          <td><span class="alliance-dot" style="background:${row.color}"></span>${row.alliance}</td>
+          <td>${row.winner}</td>
+          <td>${row.runnerUp}</td>
+          <td>${row.third}</td>
+        </tr>
+      `;
+    });
+
+    wardTable += `</tbody></table>`;
+    col.innerHTML += wardTable;
+  }
+
+  /* ================= GE ================= */
+  else {
+    col.innerHTML += `<div class="section-label">GE \u2013 Vote Share</div>`;
+
+    const gv = y.generalVotes || [];
+    const maxGV = gv.reduce((m, r) => Math.max(m, r.votes), 0);
+
+    let geVoteTable = `
+      <table class="vote-table">
+        <thead><tr><th>Alliance</th><th>Votes</th><th>%</th></tr></thead>
+        <tbody>
+    `;
+
+    gv.forEach((row) => {
+      const pct = maxGV ? (row.votes / maxGV) * 100 : 0;
+
+      geVoteTable += `
+        <tr>
+          <td><span class="alliance-dot" style="background:${row.color}"></span>${row.alliance}</td>
+          <td>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%;background:${row.color};"></div>
+              <div class="bar-text">${row.votes}</div>
+            </div>
+          </td>
+          <td>${row.percent}%</td>
+        </tr>
+      `;
+    });
+
+    geVoteTable += `</tbody></table>`;
+    col.innerHTML += geVoteTable;
+
+    /* Booth performance */
+    col.innerHTML += `<div class="section-label">GE \u2013 Booth Summary</div>`;
+
+    let boothTable = `
+      <table class="booth-table">
+        <thead><tr><th>Alliance</th><th>Win</th><th>2nd</th><th>3rd</th></tr></thead>
+        <tbody>
+    `;
+
+    (y.generalBooths || []).forEach((row) => {
+      boothTable += `
+        <tr>
+          <td><span class="alliance-dot" style="background:${row.color}"></span>${row.alliance}</td>
+          <td>${row.winner}</td>
+          <td>${row.runnerUp}</td>
+          <td>${row.third}</td>
+        </tr>
+      `;
+    });
+
+    boothTable += `</tbody></table>`;
+    col.innerHTML += boothTable;
+  }
+
+  /* NOTES */
+  if (y.notes?.trim()) {
+    col.innerHTML += `<div class="year-notes">${y.notes}</div>`;
+  }
+
+  grid.appendChild(col);
+});
+
+
+root.appendChild(grid);
+
+/* WATERMARK */
+const wm = document.createElement("div");
+wm.className = "watermark";
+wm.innerText = "@centerrightin";
+root.appendChild(wm);
+</script>
+
 </body>
 </html>
