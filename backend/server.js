@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { generatePoster } = require("./render");
+const config = require("./config");
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -16,7 +17,8 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || config.port || 4000;
 app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
+  console.log(`Backend running on port ${PORT} (profile=${config.profile})`);
 });
+
