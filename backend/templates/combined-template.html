@@ -252,20 +252,29 @@ if (yearCount <= 3) {
   const col = document.createElement("div");
   col.className = "year-column";
 
-  const isGE = y.year.toString().includes("GE");
+  const yearText = (y.year ?? "").toString();
+  const yearTextUpper = yearText.toUpperCase();
+  const electionType = yearTextUpper.includes("LOKSABHA")
+    ? "LOKSABHA"
+    : yearTextUpper.includes("ASSEMBLY")
+    ? "ASSEMBLY"
+    : yearTextUpper.includes("GE")
+    ? "GE"
+    : "LOCALBODY";
+  const isGeneralElection = electionType !== "LOCALBODY";
 
   /* YEAR HEADING WITH BADGE */
   col.innerHTML += `
     <div class="year-heading-row">
       <div class="year-heading">${y.year}</div>
-      <span class="badge ${isGE ? "badge-ge" : "badge-localbody"}">
-        ${isGE ? "GE" : "LOCALBODY"}
+      <span class="badge ${isGeneralElection ? "badge-ge" : "badge-localbody"}">
+        ${electionType}
       </span>
     </div>
   `;
 
   /* ================= LOCALBODY ================= */
-  if (!isGE) {
+  if (!isGeneralElection) {
     col.innerHTML += `<div class="section-label">Vote Share</div>`;
 
     const votes = y.votes || [];
@@ -327,7 +336,7 @@ if (yearCount <= 3) {
 
   /* ================= GE ================= */
   else {
-    col.innerHTML += `<div class="section-label">GE \u2013 Vote Share</div>`;
+    col.innerHTML += `<div class="section-label">${electionType} \u2013 Vote Share</div>`;
 
     const gv = y.generalVotes || [];
     const maxGV = gv.reduce((m, r) => Math.max(m, r.votes), 0);
@@ -359,7 +368,7 @@ if (yearCount <= 3) {
     col.innerHTML += geVoteTable;
 
     /* Booth performance */
-    col.innerHTML += `<div class="section-label">GE \u2013 Booth Summary</div>`;
+    col.innerHTML += `<div class="section-label">${electionType} \u2013 Booth Summary</div>`;
 
     let boothTable = `
       <table class="booth-table">
