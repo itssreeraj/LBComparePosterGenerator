@@ -26,6 +26,7 @@ body {
   border: 1px solid #1f2937;
   box-shadow: 0 0 40px rgba(0,0,0,0.45);
   position: relative;
+  overflow: hidden;
 }
 
 /* ========= HEADER ========= */
@@ -201,13 +202,24 @@ body {
 
 .watermark {
   position: absolute;
-  bottom: 20px;
-  right: 24px;
-  opacity: 0.22;
-  font-size: 22px;
-  font-weight: 700;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.08;
+  font-size: 120px;
+  font-weight: 800;
+  letter-spacing: 4px;
   color: #ffffff;
   pointer-events: none;
+  z-index: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.header,
+.years-grid {
+  position: relative;
+  z-index: 1;
 }
 </style>
 </head>
