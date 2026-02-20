@@ -1,6 +1,9 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
+const config = require("./config");
+
+const ASYNC_RENDER_TIMEOUT_MS = config.asyncRenderTimeoutMs || 120000;
 
 async function generatePoster(data) {
   // Pick template based on data.template
@@ -23,6 +26,8 @@ async function generatePoster(data) {
   });
 
   const page = await browser.newPage();
+  page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
+  page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
 
   await page.evaluate(() => {
     document.body.style.zoom = "200%"; 
@@ -34,7 +39,10 @@ async function generatePoster(data) {
     deviceScaleFactor: 1,
   });
 
-  await page.setContent(html, { waitUntil: "networkidle0" });
+  await page.setContent(html, {
+    waitUntil: "networkidle0",
+    timeout: ASYNC_RENDER_TIMEOUT_MS,
+  });
 
   // ❗ Crop exactly to the poster container to avoid extra white space
   const posterHandle = await page.$(".poster");
