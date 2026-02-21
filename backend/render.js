@@ -4,55 +4,130 @@ const path = require("path");
 const config = require("./config");
 
 const ASYNC_RENDER_TIMEOUT_MS = config.asyncRenderTimeoutMs || 120000;
+const MAX_CONCURRENT_RENDERS = config.maxConcurrentRenders || 2;
+
+const TEMPLATE_FILES = {
+  combined: "combined-template.html",
+  wards: "ward-template.html",
+  votes: "vote-template.html",
+};
+
+const TEMPLATE_CACHE = Object.fromEntries(
+  Object.entries(TEMPLATE_FILES).map(([key, fileName]) => [
+    key,
+    fs.readFileSync(path.join(__dirname, "templates", fileName), "utf8"),
+  ])
+);
+
+let browserPromise = null;
+
+class Semaphore {
+  constructor(limit) {
+    this.limit = limit;
+    this.active = 0;
+    this.waiters = [];
+  }
+
+  async acquire() {
+    if (this.active >= this.limit) {
+      await new Promise((resolve) => this.waiters.push(resolve));
+    }
+
+    this.active += 1;
+    return () => {
+      this.active -= 1;
+      const next = this.waiters.shift();
+      if (next) next();
+    };
+  }
+}
+
+const renderSemaphore = new Semaphore(MAX_CONCURRENT_RENDERS);
+
+async function getBrowser() {
+  if (!browserPromise) {
+    browserPromise = puppeteer
+      .launch({
+        headless: "new",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      })
+      .catch((err) => {
+        browserPromise = null;
+        throw err;
+      });
+
+    const browser = await browserPromise;
+    browser.once("disconnected", () => {
+      browserPromise = null;
+    });
+  }
+
+  return browserPromise;
+}
 
 async function generatePoster(data) {
-  // Pick template based on data.template
-  const templateName =
+  const templateKey =
     data.template === "combined"
-      ? "combined-template.html"
+      ? "combined"
       : data.template === "wards"
-      ? "ward-template.html"
-      : "vote-template.html";
+      ? "wards"
+      : "votes";
 
-  const templatePath = path.join(__dirname, "templates", templateName);
+  const templateHtml = TEMPLATE_CACHE[templateKey];
+  if (!templateHtml) {
+    throw new Error(`Template not found for key: ${templateKey}`);
+  }
 
-  let html = fs.readFileSync(templatePath, "utf8");
-  // Inject JSON payload
-  html = html.replace("__DATA__", JSON.stringify(data));
+  const html = templateHtml.replace("__DATA__", JSON.stringify(data));
+  const release = await renderSemaphore.acquire();
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  try {
+    const browser = await getBrowser();
+    const page = await browser.newPage();
+    let posterHandle = null;
 
-  const page = await browser.newPage();
-  page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
-  page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
+    try {
+      page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
+      page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
 
-  await page.evaluate(() => {
-    document.body.style.zoom = "200%"; 
-  });
+      const requestedHeight = Number(data.height) || 5000;
+      const clampedHeight = Math.min(Math.max(requestedHeight, 1000), 12000);
 
-  await page.setViewport({
-    width: 3840,
-    height: data.height || 5000,
-    deviceScaleFactor: 1,
-  });
+      await page.setViewport({
+        width: 3840,
+        height: clampedHeight,
+        deviceScaleFactor: 1,
+      });
 
-  await page.setContent(html, {
-    waitUntil: "networkidle0",
-    timeout: ASYNC_RENDER_TIMEOUT_MS,
-  });
+      await page.setContent(html, {
+        waitUntil: "domcontentloaded",
+        timeout: ASYNC_RENDER_TIMEOUT_MS,
+      });
 
-  // ❗ Crop exactly to the poster container to avoid extra white space
-  const posterHandle = await page.$(".poster");
-  const imageBase64 = await posterHandle.screenshot({
-    type: "png",
-    encoding: "base64",
-  });
+      await page.evaluate(async () => {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+      });
 
-  await browser.close();
-  return imageBase64;
+      posterHandle = await page.$(".poster");
+      if (!posterHandle) {
+        throw new Error("Poster root (.poster) not found in template");
+      }
+
+      return posterHandle.screenshot({
+        type: "png",
+        encoding: "base64",
+      });
+    } finally {
+      if (posterHandle) {
+        await posterHandle.dispose().catch(() => {});
+      }
+      await page.close().catch(() => {});
+    }
+  } finally {
+    release();
+  }
 }
 
 module.exports = { generatePoster };
