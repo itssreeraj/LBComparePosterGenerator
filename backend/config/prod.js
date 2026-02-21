@@ -1,7 +1,7 @@
 module.exports = {
   port: 4000,
   logLevel: 'warn',
-  asyncRenderTimeoutMs: 120000,
+  asyncRenderTimeoutSeconds: Number(process.env.ASYNC_RENDER_TIMEOUT_SECONDS) || 120,
   maxConcurrentRenders: 1,
   puppeteer: {
     headless: true,

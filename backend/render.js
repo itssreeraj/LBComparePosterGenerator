@@ -3,7 +3,13 @@ const fs = require("fs");
 const path = require("path");
 const config = require("./config");
 
-const ASYNC_RENDER_TIMEOUT_MS = config.asyncRenderTimeoutMs || 120000;
+const timeoutSeconds = Number(config.asyncRenderTimeoutSeconds);
+const timeoutMilliseconds = Number(config.asyncRenderTimeoutMs);
+const ASYNC_RENDER_TIMEOUT_MS = Number.isFinite(timeoutSeconds)
+  ? timeoutSeconds * 1000
+  : Number.isFinite(timeoutMilliseconds)
+  ? timeoutMilliseconds
+  : 120000;
 const MAX_CONCURRENT_RENDERS = config.maxConcurrentRenders || 2;
 const MAX_RENDER_RETRIES = config.maxRenderRetries || 1;
 const MAX_VIEWPORT_HEIGHT = config.maxViewportHeight || 10000;
