@@ -205,21 +205,33 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: 0.08;
+  opacity: 0.1;
   font-size: 120px;
   font-weight: 800;
   letter-spacing: 4px;
   color: #ffffff;
   pointer-events: none;
-  z-index: 0;
+  z-index: 3;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .header,
-.years-grid {
+.years-grid,
+.footer-watermark {
   position: relative;
   z-index: 1;
+}
+
+.footer-watermark {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e5e7eb;
+  opacity: 0.75;
 }
 </style>
 </head>
@@ -356,10 +368,13 @@ root.innerHTML = `
     <div class="localbody">${escapeHtml(data.localbody)}</div>
   </div>
   <div class="years-grid" style="grid-template-columns:${gridColumns};">${yearCards}</div>
-  <div class="watermark">@centerrightin</div>
+    <div class="watermark">@centerrightin</div>
+  <div class="footer-watermark">@centerrightin</div>
 `;
 </script>
 
 </body>
 </html>
+
+
 
