@@ -10,6 +10,9 @@ const ASYNC_RENDER_TIMEOUT_MS = Number.isFinite(timeoutSeconds)
   : Number.isFinite(timeoutMilliseconds)
   ? timeoutMilliseconds
   : 120000;
+const VIEWPORT_WIDTH = Number(config.viewportWidth) || 3840;
+const MIN_VIEWPORT_HEIGHT = Number(config.minViewportHeight) || 1000;
+const MAX_VIEWPORT_HEIGHT = Number(config.maxViewportHeight) || 4500;
 
 async function generatePoster(data) {
   const templateName =
@@ -41,9 +44,15 @@ async function generatePoster(data) {
     page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
     page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
 
+    const requestedHeight = Number(data.height) || 5000;
+    const clampedHeight = Math.min(
+      Math.max(requestedHeight, MIN_VIEWPORT_HEIGHT),
+      MAX_VIEWPORT_HEIGHT
+    );
+
     await page.setViewport({
-      width: 3840,
-      height: data.height || 5000,
+      width: VIEWPORT_WIDTH,
+      height: clampedHeight,
       deviceScaleFactor: 1,
     });
 
