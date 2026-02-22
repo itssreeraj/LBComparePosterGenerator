@@ -205,9 +205,9 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: 0.1;
-  font-size: 120px;
-  font-weight: 800;
+  opacity: 0.025;
+  font-size: 90px;
+  font-weight: 600;
   letter-spacing: 4px;
   color: #ffffff;
   pointer-events: none;
@@ -244,133 +244,197 @@ body {
 const data = __DATA__;
 const root = document.getElementById("poster-root");
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (ch) => {
-    if (ch === "&") return "&amp;";
-    if (ch === "<") return "&lt;";
-    if (ch === ">") return "&gt;";
-    if (ch === '"') return "&quot;";
-    return "&#39;";
-  });
+/* ================= HEADER ================= */
+const header = document.createElement("div");
+header.className = "header";
+
+header.innerHTML = `
+  <div class="district">${data.district}</div>
+  <div class="localbody">
+    ${data.localbody}
+  </div>
+`;
+
+root.appendChild(header);
+
+/* ================= GRID (AUTO LAYOUT) ================= */
+const grid = document.createElement("div");
+grid.className = "years-grid";
+
+const yearCount = (data.years || []).length;
+
+if (yearCount <= 3) {
+  grid.style.gridTemplateColumns = "repeat(3, 1fr)";
+} else if (yearCount <= 6) {
+  grid.style.gridTemplateColumns = "repeat(2, 1fr)";
+} else {
+  grid.style.gridTemplateColumns = "repeat(1, 1fr)";
 }
 
-function normalizeColor(color) {
-  const text = String(color || "").trim();
-  return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(text) ? text : "#6b7280";
-}
+/* ================= YEAR CARDS ================= */
+(data.years || []).forEach((y) => {
+  const col = document.createElement("div");
+  col.className = "year-column";
 
-function renderVoteTable(rows) {
-  const votes = rows || [];
-  const maxVotes = votes.reduce((m, r) => Math.max(m, Number(r.votes) || 0), 0);
+  const yearText = (y.year ?? "").toString();
+  const yearTextUpper = yearText.toUpperCase();
+  const electionType = yearTextUpper.includes("LOKSABHA")
+    ? "LOKSABHA"
+    : yearTextUpper.includes("ASSEMBLY")
+    ? "ASSEMBLY"
+    : yearTextUpper.includes("GE")
+    ? "GE"
+    : "LOCALBODY";
+  const isGeneralElection = electionType !== "LOCALBODY";
 
-  const body = votes
-    .map((row) => {
-      const color = normalizeColor(row.color);
-      const rawVotes = Number(row.votes) || 0;
-      const pct = maxVotes ? (rawVotes / maxVotes) * 100 : 0;
-      return `
+  /* YEAR HEADING WITH BADGE */
+  col.innerHTML += `
+    <div class="year-heading-row">
+      <div class="year-heading">${y.year}</div>
+      <span class="badge ${isGeneralElection ? "badge-ge" : "badge-localbody"}">
+        ${electionType}
+      </span>
+    </div>
+  `;
+
+  /* ================= LOCALBODY ================= */
+  if (!isGeneralElection) {
+    col.innerHTML += `<div class="section-label">Vote Share</div>`;
+
+    const votes = y.votes || [];
+    const maxVotes = votes.reduce((m, r) => Math.max(m, r.votes), 0);
+
+    let voteTable = `
+      <table class="vote-table">
+        <thead>
+          <tr><th>Alliance</th><th>Votes</th><th>%</th></tr>
+        </thead><tbody>
+    `;
+
+    votes.forEach((row) => {
+      const pct = maxVotes ? (row.votes / maxVotes) * 100 : 0;
+
+      voteTable += `
         <tr>
           <td>
-            <span class="alliance-dot" style="background:${color}"></span>
-            ${escapeHtml(row.alliance)}
+            <span class="alliance-dot" style="background:${row.color}"></span>
+            ${row.alliance}
           </td>
           <td>
             <div class="bar-track">
-              <div class="bar-fill" style="width:${pct}%;background:${color};"></div>
-              <div class="bar-text">${escapeHtml(rawVotes)}</div>
+              <div class="bar-fill" style="width:${pct}%;background:${row.color};"></div>
+              <div class="bar-text">${row.votes}</div>
             </div>
           </td>
-          <td>${escapeHtml(row.percent)}%</td>
+          <td>${row.percent}%</td>
         </tr>
       `;
-    })
-    .join("");
+    });
 
-  return `
-    <table class="vote-table">
-      <thead><tr><th>Alliance</th><th>Votes</th><th>%</th></tr></thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
-}
+    voteTable += `</tbody></table>`;
+    col.innerHTML += voteTable;
 
-function renderSummaryTable(className, rows) {
-  const body = (rows || [])
-    .map((row) => {
-      const color = normalizeColor(row.color);
-      return `
+    /* Ward Performance */
+    col.innerHTML += `<div class="section-label">Ward Performance</div>`;
+
+    let wardTable = `
+      <table class="ward-table">
+        <thead><tr><th>Alliance</th><th>Win</th><th>2nd</th><th>3rd</th></tr></thead>
+        <tbody>
+    `;
+
+    (y.wards || []).forEach((row) => {
+      wardTable += `
         <tr>
-          <td><span class="alliance-dot" style="background:${color}"></span>${escapeHtml(row.alliance)}</td>
-          <td>${escapeHtml(row.winner)}</td>
-          <td>${escapeHtml(row.runnerUp)}</td>
-          <td>${escapeHtml(row.third)}</td>
+          <td><span class="alliance-dot" style="background:${row.color}"></span>${row.alliance}</td>
+          <td>${row.winner}</td>
+          <td>${row.runnerUp}</td>
+          <td>${row.third}</td>
         </tr>
       `;
-    })
-    .join("");
+    });
 
-  return `
-    <table class="${className}">
-      <thead><tr><th>Alliance</th><th>Win</th><th>2nd</th><th>3rd</th></tr></thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
-}
+    wardTable += `</tbody></table>`;
+    col.innerHTML += wardTable;
+  }
 
-const yearCards = (data.years || [])
-  .map((y) => {
-    const yearText = (y.year ?? "").toString();
-    const yearTextUpper = yearText.toUpperCase();
-    const electionType = yearTextUpper.includes("LOKSABHA")
-      ? "LOKSABHA"
-      : yearTextUpper.includes("ASSEMBLY")
-      ? "ASSEMBLY"
-      : yearTextUpper.includes("GE")
-      ? "GE"
-      : "LOCALBODY";
+  /* ================= GE ================= */
+  else {
+    col.innerHTML += `<div class="section-label">${electionType} \u2013 Vote Share</div>`;
 
-    const isGeneralElection = electionType !== "LOCALBODY";
-    const sections = [];
+    const gv = y.generalVotes || [];
+    const maxGV = gv.reduce((m, r) => Math.max(m, r.votes), 0);
 
-    sections.push(`
-      <div class="year-heading-row">
-        <div class="year-heading">${escapeHtml(y.year)}</div>
-        <span class="badge ${isGeneralElection ? "badge-ge" : "badge-localbody"}">${electionType}</span>
-      </div>
-    `);
+    let geVoteTable = `
+      <table class="vote-table">
+        <thead><tr><th>Alliance</th><th>Votes</th><th>%</th></tr></thead>
+        <tbody>
+    `;
 
-    if (!isGeneralElection) {
-      sections.push('<div class="section-label">Vote Share</div>');
-      sections.push(renderVoteTable(y.votes));
-      sections.push('<div class="section-label">Ward Performance</div>');
-      sections.push(renderSummaryTable("ward-table", y.wards));
-    } else {
-      sections.push(`<div class="section-label">${electionType} - Vote Share</div>`);
-      sections.push(renderVoteTable(y.generalVotes));
-      sections.push(`<div class="section-label">${electionType} - Booth Summary</div>`);
-      sections.push(renderSummaryTable("booth-table", y.generalBooths));
-    }
+    gv.forEach((row) => {
+      const pct = maxGV ? (row.votes / maxGV) * 100 : 0;
 
-    if (y.notes && String(y.notes).trim()) {
-      sections.push(`<div class="year-notes">${escapeHtml(y.notes)}</div>`);
-    }
+      geVoteTable += `
+        <tr>
+          <td><span class="alliance-dot" style="background:${row.color}"></span>${row.alliance}</td>
+          <td>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%;background:${row.color};"></div>
+              <div class="bar-text">${row.votes}</div>
+            </div>
+          </td>
+          <td>${row.percent}%</td>
+        </tr>
+      `;
+    });
 
-    return `<div class="year-column">${sections.join("")}</div>`;
-  })
-  .join("");
+    geVoteTable += `</tbody></table>`;
+    col.innerHTML += geVoteTable;
 
-const yearCount = (data.years || []).length;
-const gridColumns = yearCount <= 3 ? "repeat(3, 1fr)" : yearCount <= 6 ? "repeat(2, 1fr)" : "repeat(1, 1fr)";
+    /* Booth performance */
+    col.innerHTML += `<div class="section-label">${electionType} \u2013 Booth Summary</div>`;
 
-root.innerHTML = `
-  <div class="header">
-    <div class="district">${escapeHtml(data.district)}</div>
-    <div class="localbody">${escapeHtml(data.localbody)}</div>
-  </div>
-  <div class="years-grid" style="grid-template-columns:${gridColumns};">${yearCards}</div>
-    <div class="watermark">@centerrightin</div>
-  <div class="footer-watermark">@centerrightin</div>
-`;
+    let boothTable = `
+      <table class="booth-table">
+        <thead><tr><th>Alliance</th><th>Win</th><th>2nd</th><th>3rd</th></tr></thead>
+        <tbody>
+    `;
+
+    (y.generalBooths || []).forEach((row) => {
+      boothTable += `
+        <tr>
+          <td><span class="alliance-dot" style="background:${row.color}"></span>${row.alliance}</td>
+          <td>${row.winner}</td>
+          <td>${row.runnerUp}</td>
+          <td>${row.third}</td>
+        </tr>
+      `;
+    });
+
+    boothTable += `</tbody></table>`;
+    col.innerHTML += boothTable;
+  }
+
+  /* NOTES */
+  if (y.notes?.trim()) {
+    col.innerHTML += `<div class="year-notes">${y.notes}</div>`;
+  }
+
+  grid.appendChild(col);
+});
+
+root.appendChild(grid);
+
+/* WATERMARKS */
+const centerWm = document.createElement("div");
+centerWm.className = "watermark";
+centerWm.innerText = "@centerrightin";
+root.appendChild(centerWm);
+
+const footerWm = document.createElement("div");
+footerWm.className = "footer-watermark";
+footerWm.innerText = "@centerrightin";
+root.appendChild(footerWm);
 </script>
 
 </body>
