@@ -10,6 +10,7 @@ const ASYNC_RENDER_TIMEOUT_MS = Number.isFinite(timeoutSeconds)
   : Number.isFinite(timeoutMilliseconds)
   ? timeoutMilliseconds
   : 120000;
+const VIEWPORT_WIDTH = Number(config.viewportWidth) || 3840;
 
 async function generatePoster(data) {
   const templateName =
@@ -42,7 +43,7 @@ async function generatePoster(data) {
     page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
 
     await page.setViewport({
-      width: 3840,
+      width: VIEWPORT_WIDTH,
       height: data.height || 5000,
       deviceScaleFactor: 1,
     });
