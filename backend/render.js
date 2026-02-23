@@ -128,11 +128,10 @@ async function generatePoster(data) {
       throw new Error("Poster root (.poster) not found in template");
     }
 
-    const imageBase64 = await posterHandle.screenshot({
+    const imageBuffer = await posterHandle.screenshot({
       type: "png",
-      encoding: "base64",
     });
-    return imageBase64;
+    return imageBuffer;
   } finally {
     if (page) {
       await page.close().catch(() => {});
