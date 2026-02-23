@@ -36,6 +36,19 @@ const PUPPETEER_LAUNCH_OPTIONS = {
       ? puppeteerConfig.args
       : ["--no-sandbox", "--disable-setuid-sandbox"],
 };
+const TEMPLATE_FILE_MAP = {
+  combined: "combined-template.html",
+  wards: "ward-template.html",
+  vote: "vote-template.html",
+};
+const TEMPLATE_CACHE = Object.entries(TEMPLATE_FILE_MAP).reduce(
+  (accumulator, [key, fileName]) => {
+    const templatePath = path.join(__dirname, "templates", fileName);
+    accumulator[key] = fs.readFileSync(templatePath, "utf8");
+    return accumulator;
+  },
+  {}
+);
 
 class Semaphore {
   constructor(limit, maxQueue) {
@@ -108,15 +121,19 @@ async function generatePoster(data) {
   let page;
 
   try {
-    const templateName =
+    const templateKey =
       data.template === "combined"
-        ? "combined-template.html"
+        ? "combined"
         : data.template === "wards"
-        ? "ward-template.html"
-        : "vote-template.html";
+        ? "wards"
+        : "vote";
 
-    const templatePath = path.join(__dirname, "templates", templateName);
-    let html = fs.readFileSync(templatePath, "utf8");
+    const templateHtml = TEMPLATE_CACHE[templateKey];
+    if (!templateHtml) {
+      throw new Error(`Unknown template key '${templateKey}'`);
+    }
+
+    let html = templateHtml;
     html = html.replace("__DATA__", JSON.stringify(data));
 
     const browser = await getBrowser();
