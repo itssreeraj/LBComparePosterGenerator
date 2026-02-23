@@ -12,6 +12,10 @@ app.post("/generate", async (req, res) => {
     const imageBuffer = await generatePoster(req.body);
     res.type("png").send(imageBuffer);
   } catch (err) {
+    if (err && err.code === "RENDER_QUEUE_FULL") {
+      res.set("Retry-After", "1");
+      return res.status(429).json({ error: "Renderer is busy, try again shortly" });
+    }
     console.error("Poster generation failed:", err);
     res.status(500).json({ error: "Poster generation failed" });
   }

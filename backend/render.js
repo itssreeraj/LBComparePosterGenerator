@@ -10,7 +10,20 @@ const ASYNC_RENDER_TIMEOUT_MS = Number.isFinite(timeoutSeconds)
   : Number.isFinite(timeoutMilliseconds)
   ? timeoutMilliseconds
   : 120000;
-const MAX_CONCURRENT_RENDERS = Number(config.maxConcurrentRenders) || 1;
+const parsedConcurrentRenders = Number(
+  config.maxConcurrentRenders ?? process.env.MAX_CONCURRENT_RENDERS
+);
+const MAX_CONCURRENT_RENDERS =
+  Number.isFinite(parsedConcurrentRenders) && parsedConcurrentRenders > 0
+    ? Math.floor(parsedConcurrentRenders)
+    : 1;
+const parsedMaxRenderQueue = Number(
+  config.maxRenderQueue ?? process.env.MAX_RENDER_QUEUE
+);
+const MAX_RENDER_QUEUE =
+  Number.isFinite(parsedMaxRenderQueue) && parsedMaxRenderQueue >= 0
+    ? Math.floor(parsedMaxRenderQueue)
+    : 1;
 const VIEWPORT_WIDTH = Number(config.viewportWidth) || 3840;
 const MIN_VIEWPORT_HEIGHT = Number(config.minViewportHeight) || 1000;
 const MAX_VIEWPORT_HEIGHT = Number(config.maxViewportHeight) || 4500;
@@ -25,14 +38,20 @@ const PUPPETEER_LAUNCH_OPTIONS = {
 };
 
 class Semaphore {
-  constructor(limit) {
+  constructor(limit, maxQueue) {
     this.limit = limit;
+    this.maxQueue = maxQueue;
     this.active = 0;
     this.waiters = [];
   }
 
   async acquire() {
     if (this.active >= this.limit) {
+      if (this.waiters.length >= this.maxQueue) {
+        const error = new Error("Render queue is full");
+        error.code = "RENDER_QUEUE_FULL";
+        throw error;
+      }
       await new Promise((resolve) => this.waiters.push(resolve));
     }
 
@@ -45,7 +64,7 @@ class Semaphore {
   }
 }
 
-const renderSemaphore = new Semaphore(MAX_CONCURRENT_RENDERS);
+const renderSemaphore = new Semaphore(MAX_CONCURRENT_RENDERS, MAX_RENDER_QUEUE);
 let sharedBrowser = null;
 let browserLaunchPromise = null;
 
