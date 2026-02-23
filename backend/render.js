@@ -10,11 +10,36 @@ const ASYNC_RENDER_TIMEOUT_MS = Number.isFinite(timeoutSeconds)
   : Number.isFinite(timeoutMilliseconds)
   ? timeoutMilliseconds
   : 120000;
+const MAX_CONCURRENT_RENDERS = Number(config.maxConcurrentRenders) || 1;
 const VIEWPORT_WIDTH = Number(config.viewportWidth) || 3840;
 const MIN_VIEWPORT_HEIGHT = Number(config.minViewportHeight) || 1000;
 const MAX_VIEWPORT_HEIGHT = Number(config.maxViewportHeight) || 4500;
 
+class Semaphore {
+  constructor(limit) {
+    this.limit = limit;
+    this.active = 0;
+    this.waiters = [];
+  }
+
+  async acquire() {
+    if (this.active >= this.limit) {
+      await new Promise((resolve) => this.waiters.push(resolve));
+    }
+
+    this.active += 1;
+    return () => {
+      this.active -= 1;
+      const next = this.waiters.shift();
+      if (next) next();
+    };
+  }
+}
+
+const renderSemaphore = new Semaphore(MAX_CONCURRENT_RENDERS);
+
 async function generatePoster(data) {
+  const release = await renderSemaphore.acquire();
   const templateName =
     data.template === "combined"
       ? "combined-template.html"
@@ -74,6 +99,7 @@ async function generatePoster(data) {
   } finally {
     await page.close().catch(() => {});
     await browser.close().catch(() => {});
+    release();
   }
 }
 
