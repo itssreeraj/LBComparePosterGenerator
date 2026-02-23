@@ -12,7 +12,7 @@ export default function PosterPreview({ image, loading }) {
         <div>
           <img
             className="preview-image"
-            src={`data:image/png;base64,${image}`}
+            src={image}
             alt="Generated election poster"
           />
           <p style={{ marginTop: 8, fontSize: 14, opacity: 0.75 }}>

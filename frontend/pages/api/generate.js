@@ -16,8 +16,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Backend generate failed" });
     }
 
-    const data = await backendRes.json();
-    res.status(200).json(data);
+    const arrayBuffer = await backendRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = backendRes.headers.get("content-type") || "image/png";
+
+    res.setHeader("Content-Type", contentType);
+    res.status(200).send(buffer);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Proxy error" });

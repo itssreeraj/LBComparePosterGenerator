@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PosterForm from "../components/PosterForm";
 import PosterPreview from "../components/PosterPreview";
 
@@ -8,6 +8,14 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    return () => {
+      if (image) {
+        URL.revokeObjectURL(image);
+      }
+    };
+  }, [image]);
+
   const handleConfigChange = useCallback((cfg) => {
     setConfig(cfg);
   }, []);
@@ -16,7 +24,12 @@ export default function Home() {
     if (!config) return;
     setLoading(true);
     setError(null);
-    setImage(null);
+    setImage((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev);
+      }
+      return null;
+    });
 
     try {
       const res = await fetch("/api/generate", {
@@ -29,8 +42,14 @@ export default function Home() {
         throw new Error("Failed to generate image");
       }
 
-      const data = await res.json();
-      setImage(data.image);
+      const blob = await res.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      setImage((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev);
+        }
+        return imageUrl;
+      });
     } catch (err) {
       console.error(err);
       setError("Error generating poster. Check backend logs.");
