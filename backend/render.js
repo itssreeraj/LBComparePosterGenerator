@@ -14,6 +14,15 @@ const MAX_CONCURRENT_RENDERS = Number(config.maxConcurrentRenders) || 1;
 const VIEWPORT_WIDTH = Number(config.viewportWidth) || 3840;
 const MIN_VIEWPORT_HEIGHT = Number(config.minViewportHeight) || 1000;
 const MAX_VIEWPORT_HEIGHT = Number(config.maxViewportHeight) || 4500;
+const puppeteerConfig = config.puppeteer || {};
+const PUPPETEER_LAUNCH_OPTIONS = {
+  headless:
+    typeof puppeteerConfig.headless === "boolean" ? puppeteerConfig.headless : "new",
+  args:
+    Array.isArray(puppeteerConfig.args) && puppeteerConfig.args.length > 0
+      ? puppeteerConfig.args
+      : ["--no-sandbox", "--disable-setuid-sandbox"],
+};
 
 class Semaphore {
   constructor(limit) {
@@ -37,35 +46,63 @@ class Semaphore {
 }
 
 const renderSemaphore = new Semaphore(MAX_CONCURRENT_RENDERS);
+let sharedBrowser = null;
+let browserLaunchPromise = null;
+
+function isBrowserConnected(browser) {
+  if (!browser) return false;
+  if (typeof browser.connected === "boolean") return browser.connected;
+  if (typeof browser.isConnected === "function") return browser.isConnected();
+  return true;
+}
+
+async function launchBrowser() {
+  const browser = await puppeteer.launch(PUPPETEER_LAUNCH_OPTIONS);
+  browser.on("disconnected", () => {
+    if (sharedBrowser === browser) {
+      sharedBrowser = null;
+    }
+  });
+  return browser;
+}
+
+async function getBrowser() {
+  if (isBrowserConnected(sharedBrowser)) {
+    return sharedBrowser;
+  }
+
+  if (!browserLaunchPromise) {
+    browserLaunchPromise = (async () => {
+      const browser = await launchBrowser();
+      sharedBrowser = browser;
+      return browser;
+    })().finally(() => {
+      browserLaunchPromise = null;
+    });
+  }
+
+  return browserLaunchPromise;
+}
 
 async function generatePoster(data) {
   const release = await renderSemaphore.acquire();
-  const templateName =
-    data.template === "combined"
-      ? "combined-template.html"
-      : data.template === "wards"
-      ? "ward-template.html"
-      : "vote-template.html";
-
-  const templatePath = path.join(__dirname, "templates", templateName);
-  let html = fs.readFileSync(templatePath, "utf8");
-  html = html.replace("__DATA__", JSON.stringify(data));
-
-  const puppeteerConfig = config.puppeteer || {};
-  const browser = await puppeteer.launch({
-    headless:
-      typeof puppeteerConfig.headless === "boolean"
-        ? puppeteerConfig.headless
-        : "new",
-    args:
-      Array.isArray(puppeteerConfig.args) && puppeteerConfig.args.length > 0
-        ? puppeteerConfig.args
-        : ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-
-  const page = await browser.newPage();
+  let page;
 
   try {
+    const templateName =
+      data.template === "combined"
+        ? "combined-template.html"
+        : data.template === "wards"
+        ? "ward-template.html"
+        : "vote-template.html";
+
+    const templatePath = path.join(__dirname, "templates", templateName);
+    let html = fs.readFileSync(templatePath, "utf8");
+    html = html.replace("__DATA__", JSON.stringify(data));
+
+    const browser = await getBrowser();
+    page = await browser.newPage();
+
     page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
     page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
 
@@ -97,8 +134,9 @@ async function generatePoster(data) {
     });
     return imageBase64;
   } finally {
-    await page.close().catch(() => {});
-    await browser.close().catch(() => {});
+    if (page) {
+      await page.close().catch(() => {});
+    }
     release();
   }
 }
