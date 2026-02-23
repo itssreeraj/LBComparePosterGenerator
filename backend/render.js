@@ -155,7 +155,7 @@ async function generatePoster(data) {
     });
 
     await page.setContent(html, {
-      waitUntil: "networkidle0",
+      waitUntil: "domcontentloaded",
       timeout: ASYNC_RENDER_TIMEOUT_MS,
     });
 
