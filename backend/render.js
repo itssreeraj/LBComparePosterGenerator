@@ -463,6 +463,9 @@ function buildAssemblyOverviewPosterMarkup(data) {
   const metaRowMarkup = metaPills.length
     ? `<div class="assembly-meta-row">${metaPills.join("")}</div>`
     : "";
+  const noteText =
+    textOrEmpty(data?.posterNote).trim() ||
+    "General election results exclude postal ballots. Only EVM votes are included.";
 
   return `
     <div class="header">
@@ -472,6 +475,9 @@ function buildAssemblyOverviewPosterMarkup(data) {
     </div>
     <div class="assembly-results-grid">
       ${rowsMarkup || '<div class="assembly-empty-state">No historic election results available.</div>'}
+    </div>
+    <div class="assembly-note">
+      <strong>Note:</strong> ${escapeHtml(noteText)}
     </div>
     <div class="footer-watermark">@centerrightin</div>
     <div class="footer">
