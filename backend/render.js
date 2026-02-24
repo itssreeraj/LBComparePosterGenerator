@@ -24,6 +24,14 @@ const MAX_RENDER_QUEUE =
   Number.isFinite(parsedMaxRenderQueue) && parsedMaxRenderQueue >= 0
     ? Math.floor(parsedMaxRenderQueue)
     : 1;
+const parsedBrowserIdleTimeoutSeconds = Number(
+  config.browserIdleTimeoutSeconds ?? process.env.BROWSER_IDLE_TIMEOUT_SECONDS
+);
+const BROWSER_IDLE_TIMEOUT_MS =
+  Number.isFinite(parsedBrowserIdleTimeoutSeconds) &&
+  parsedBrowserIdleTimeoutSeconds > 0
+    ? Math.floor(parsedBrowserIdleTimeoutSeconds * 1000)
+    : 60000;
 const VIEWPORT_WIDTH = Number(config.viewportWidth) || 3840;
 const MIN_VIEWPORT_HEIGHT = Number(config.minViewportHeight) || 1000;
 const MAX_VIEWPORT_HEIGHT = Number(config.maxViewportHeight) || 4500;
@@ -80,6 +88,8 @@ class Semaphore {
 const renderSemaphore = new Semaphore(MAX_CONCURRENT_RENDERS, MAX_RENDER_QUEUE);
 let sharedBrowser = null;
 let browserLaunchPromise = null;
+let activeRenderCount = 0;
+let idleBrowserCloseTimer = null;
 
 function isBrowserConnected(browser) {
   if (!browser) return false;
@@ -88,12 +98,54 @@ function isBrowserConnected(browser) {
   return true;
 }
 
+function clearIdleBrowserCloseTimer() {
+  if (idleBrowserCloseTimer) {
+    clearTimeout(idleBrowserCloseTimer);
+    idleBrowserCloseTimer = null;
+  }
+}
+
+async function closeSharedBrowserIfIdle() {
+  if (activeRenderCount > 0) {
+    return;
+  }
+
+  const browser = sharedBrowser;
+  if (!isBrowserConnected(browser)) {
+    sharedBrowser = null;
+    return;
+  }
+
+  sharedBrowser = null;
+  await browser.close().catch(() => {});
+}
+
+function scheduleIdleBrowserClose() {
+  clearIdleBrowserCloseTimer();
+
+  if (BROWSER_IDLE_TIMEOUT_MS <= 0) {
+    return;
+  }
+
+  idleBrowserCloseTimer = setTimeout(() => {
+    idleBrowserCloseTimer = null;
+    closeSharedBrowserIfIdle().catch((error) => {
+      console.error("Idle browser close failed:", error);
+    });
+  }, BROWSER_IDLE_TIMEOUT_MS);
+
+  if (typeof idleBrowserCloseTimer.unref === "function") {
+    idleBrowserCloseTimer.unref();
+  }
+}
+
 async function launchBrowser() {
   const browser = await puppeteer.launch(PUPPETEER_LAUNCH_OPTIONS);
   browser.on("disconnected", () => {
     if (sharedBrowser === browser) {
       sharedBrowser = null;
     }
+    clearIdleBrowserCloseTimer();
   });
   return browser;
 }
@@ -118,6 +170,8 @@ async function getBrowser() {
 
 async function generatePoster(data) {
   const release = await renderSemaphore.acquire();
+  activeRenderCount += 1;
+  clearIdleBrowserCloseTimer();
   let page;
 
   try {
@@ -172,7 +226,11 @@ async function generatePoster(data) {
     if (page) {
       await page.close().catch(() => {});
     }
+    activeRenderCount = Math.max(0, activeRenderCount - 1);
     release();
+    if (activeRenderCount === 0) {
+      scheduleIdleBrowserClose();
+    }
   }
 }
 
