@@ -57,6 +57,200 @@ const TEMPLATE_CACHE = Object.entries(TEMPLATE_FILE_MAP).reduce(
   },
   {}
 );
+const SAFE_DEFAULT_COLOR = "#999999";
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function sanitizeColor(value) {
+  const color = typeof value === "string" ? value.trim() : "";
+  if (/^#[0-9a-fA-F]{3,8}$/.test(color)) {
+    return color;
+  }
+  return SAFE_DEFAULT_COLOR;
+}
+
+function textOrEmpty(value) {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function textOrDashFromNumber(value) {
+  const number = toFiniteNumber(value);
+  return number === null ? "-" : String(number);
+}
+
+function percentOrDash(value) {
+  const number = toFiniteNumber(value);
+  return number === null ? "-" : `${number}%`;
+}
+
+function detectElectionType(yearText) {
+  const upper = yearText.toUpperCase();
+  if (upper.includes("LOKSABHA")) return "LOKSABHA";
+  if (upper.includes("ASSEMBLY")) return "ASSEMBLY";
+  if (upper.includes("GE")) return "GE";
+  return "LOCALBODY";
+}
+
+function buildVoteTableRows(rows) {
+  const maxVotes = rows.reduce((max, row) => {
+    const votes = toFiniteNumber(row?.votes);
+    return Math.max(max, votes === null ? 0 : votes);
+  }, 0);
+
+  return rows
+    .map((row) => {
+      const alliance = escapeHtml(textOrEmpty(row?.alliance || "OTH"));
+      const color = sanitizeColor(row?.color);
+      const votesNumber = toFiniteNumber(row?.votes);
+      const votesText = escapeHtml(textOrDashFromNumber(votesNumber));
+      const votesForBar = votesNumber === null ? 0 : votesNumber;
+      const barWidth =
+        maxVotes > 0 ? Math.max(0, Math.min((votesForBar / maxVotes) * 100, 100)) : 0;
+      const percentText = escapeHtml(percentOrDash(row?.percent));
+
+      return `
+        <tr>
+          <td><span class="alliance-dot" style="background:${color}"></span>${alliance}</td>
+          <td>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${barWidth}%;background:${color};"></div>
+              <div class="bar-text">${votesText}</div>
+            </div>
+          </td>
+          <td>${percentText}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function buildPerformanceTableRows(rows) {
+  return rows
+    .map((row) => {
+      const alliance = escapeHtml(textOrEmpty(row?.alliance || "OTH"));
+      const color = sanitizeColor(row?.color);
+      const winner = escapeHtml(textOrDashFromNumber(row?.winner));
+      const runnerUp = escapeHtml(textOrDashFromNumber(row?.runnerUp));
+      const third = escapeHtml(textOrDashFromNumber(row?.third));
+
+      return `
+        <tr>
+          <td><span class="alliance-dot" style="background:${color}"></span>${alliance}</td>
+          <td>${winner}</td>
+          <td>${runnerUp}</td>
+          <td>${third}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function buildVoteTableMarkup(rows) {
+  return `
+    <table class="vote-table">
+      <thead><tr><th>Alliance</th><th>Votes</th><th>%</th></tr></thead>
+      <tbody>${buildVoteTableRows(rows)}</tbody>
+    </table>
+  `;
+}
+
+function buildPerformanceTableMarkup(rows, tableClassName) {
+  return `
+    <table class="${tableClassName}">
+      <thead><tr><th>Alliance</th><th>Win</th><th>2nd</th><th>3rd</th></tr></thead>
+      <tbody>${buildPerformanceTableRows(rows)}</tbody>
+    </table>
+  `;
+}
+
+function buildYearColumnMarkup(yearData) {
+  const yearText = textOrEmpty(yearData?.year);
+  const electionType = detectElectionType(yearText);
+  const isGeneralElection = electionType !== "LOCALBODY";
+  const yearHeading = escapeHtml(yearText);
+  const badgeClass = isGeneralElection ? "badge-ge" : "badge-localbody";
+  const badgeText = escapeHtml(electionType);
+  const notes = textOrEmpty(yearData?.notes).trim();
+  let sections = "";
+
+  if (!isGeneralElection) {
+    const votes = asArray(yearData?.votes);
+    const wards = asArray(yearData?.wards);
+
+    sections += `<div class="section-label">Vote Share</div>`;
+    sections += buildVoteTableMarkup(votes);
+    sections += `<div class="section-label">Ward Performance</div>`;
+    sections += buildPerformanceTableMarkup(wards, "ward-table");
+  } else {
+    const generalVotes = asArray(yearData?.generalVotes);
+    const generalBooths = asArray(yearData?.generalBooths);
+    const electionTypeLabel = escapeHtml(electionType);
+
+    sections += `<div class="section-label">${electionTypeLabel} - Vote Share</div>`;
+    sections += buildVoteTableMarkup(generalVotes);
+    sections += `<div class="section-label">${electionTypeLabel} - Booth Summary</div>`;
+    sections += buildPerformanceTableMarkup(generalBooths, "booth-table");
+  }
+
+  const notesMarkup = notes ? `<div class="year-notes">${escapeHtml(notes)}</div>` : "";
+
+  return `
+    <div class="year-column">
+      <div class="year-heading-row">
+        <div class="year-heading">${yearHeading}</div>
+        <span class="badge ${badgeClass}">${badgeText}</span>
+      </div>
+      ${sections}
+      ${notesMarkup}
+    </div>
+  `;
+}
+
+function buildCombinedPosterMarkup(data) {
+  const years = asArray(data?.years);
+  const yearColumns = years.map((yearData) => buildYearColumnMarkup(yearData)).join("");
+
+  let gridTemplateColumns = "repeat(1, 1fr)";
+  if (years.length <= 3) {
+    gridTemplateColumns = "repeat(3, 1fr)";
+  } else if (years.length <= 6) {
+    gridTemplateColumns = "repeat(2, 1fr)";
+  }
+
+  const district = escapeHtml(textOrEmpty(data?.district));
+  const localbody = escapeHtml(textOrEmpty(data?.localbody));
+
+  return `
+    <div class="header">
+      <div class="district">${district}</div>
+      <div class="localbody">${localbody}</div>
+    </div>
+    <div class="years-grid" style="grid-template-columns:${gridTemplateColumns};">
+      ${yearColumns}
+    </div>
+    <div class="watermark">@centerrightin</div>
+    <div class="footer-watermark">@centerrightin</div>
+  `;
+}
 
 class Semaphore {
   constructor(limit, maxQueue) {
@@ -233,8 +427,15 @@ async function generatePoster(data) {
       throw new Error(`Unknown template key '${templateKey}'`);
     }
 
-    let html = templateHtml;
-    html = html.replace("__DATA__", JSON.stringify(data));
+    let html;
+    if (templateKey === "combined") {
+      if (!templateHtml.includes("__COMBINED_CONTENT__")) {
+        throw new Error("Combined template placeholder not found");
+      }
+      html = templateHtml.replace("__COMBINED_CONTENT__", buildCombinedPosterMarkup(data));
+    } else {
+      html = templateHtml.replace("__DATA__", JSON.stringify(data));
+    }
 
     browser = await getBrowser();
     page = await acquirePooledPage(browser);
