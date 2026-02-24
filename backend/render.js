@@ -64,6 +64,57 @@ const TEMPLATE_CACHE = Object.entries(TEMPLATE_FILE_MAP).reduce(
   {}
 );
 const SAFE_DEFAULT_COLOR = "#999999";
+const LOG_LEVEL_WEIGHT = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
+};
+
+function resolveLogLevel(level) {
+  const normalized = String(level || "").toLowerCase();
+  return LOG_LEVEL_WEIGHT[normalized] ? normalized : "info";
+}
+
+const RENDER_LOG_LEVEL = resolveLogLevel(
+  process.env.RENDER_LOG_LEVEL || config.logLevel || "info"
+);
+
+function shouldLog(level) {
+  return LOG_LEVEL_WEIGHT[level] >= LOG_LEVEL_WEIGHT[RENDER_LOG_LEVEL];
+}
+
+function serializeError(error) {
+  if (!error) return null;
+  return {
+    name: error.name,
+    message: error.message,
+    code: error.code,
+  };
+}
+
+function renderLog(level, event, meta = {}) {
+  if (!shouldLog(level)) return;
+
+  const payload = {
+    ts: new Date().toISOString(),
+    scope: "render",
+    level,
+    event,
+    ...meta,
+  };
+  const line = JSON.stringify(payload);
+
+  if (level === "error") {
+    console.error(line);
+    return;
+  }
+  if (level === "warn") {
+    console.warn(line);
+    return;
+  }
+  console.log(line);
+}
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -400,8 +451,20 @@ class Semaphore {
       if (this.waiters.length >= this.maxQueue) {
         const error = new Error("Render queue is full");
         error.code = "RENDER_QUEUE_FULL";
+        renderLog("warn", "render_queue_full", {
+          active: this.active,
+          queueDepth: this.waiters.length,
+          limit: this.limit,
+          maxQueue: this.maxQueue,
+        });
         throw error;
       }
+      renderLog("debug", "render_enqueued", {
+        active: this.active,
+        queueDepth: this.waiters.length + 1,
+        limit: this.limit,
+        maxQueue: this.maxQueue,
+      });
       await new Promise((resolve) => this.waiters.push(resolve));
     }
 
@@ -421,6 +484,16 @@ let activeRenderCount = 0;
 let idleBrowserCloseTimer = null;
 let pagePool = [];
 const configuredPages = new WeakSet();
+
+renderLog("info", "renderer_initialized", {
+  logLevel: RENDER_LOG_LEVEL,
+  maxConcurrentRenders: MAX_CONCURRENT_RENDERS,
+  maxRenderQueue: MAX_RENDER_QUEUE,
+  browserIdleTimeoutMs: BROWSER_IDLE_TIMEOUT_MS,
+  viewportWidth: VIEWPORT_WIDTH,
+  minViewportHeight: MIN_VIEWPORT_HEIGHT,
+  maxViewportHeight: MAX_VIEWPORT_HEIGHT,
+});
 
 function isBrowserConnected(browser) {
   if (!browser) return false;
@@ -470,11 +543,13 @@ async function configurePageForRendering(page) {
   });
 
   configuredPages.add(page);
+  renderLog("debug", "page_configured");
 }
 
 async function createConfiguredPage(browser) {
   const page = await browser.newPage();
   await configurePageForRendering(page);
+  renderLog("debug", "page_created");
   return page;
 }
 
@@ -484,13 +559,18 @@ async function acquirePooledPage(browser) {
     if (pooledPage && !pooledPage.isClosed()) {
       try {
         await configurePageForRendering(pooledPage);
+        renderLog("debug", "page_reused_from_pool", {
+          poolSizeAfterPop: pagePool.length,
+        });
         return pooledPage;
       } catch {
         await pooledPage.close().catch(() => {});
+        renderLog("warn", "page_reuse_failed_closed");
       }
     }
   }
 
+  renderLog("debug", "page_pool_empty_create_new");
   return createConfiguredPage(browser);
 }
 
@@ -510,6 +590,7 @@ async function releasePooledPage(browser, page) {
     });
   } catch {
     await page.close().catch(() => {});
+    renderLog("warn", "page_release_reset_failed_closed");
     return;
   }
 
@@ -518,10 +599,16 @@ async function releasePooledPage(browser, page) {
   }
 
   pagePool.push(page);
+  renderLog("debug", "page_released_to_pool", {
+    poolSize: pagePool.length,
+  });
 }
 
 async function closeSharedBrowserIfIdle() {
   if (activeRenderCount > 0) {
+    renderLog("debug", "idle_browser_close_skipped_active_render", {
+      activeRenderCount,
+    });
     return;
   }
 
@@ -529,18 +616,21 @@ async function closeSharedBrowserIfIdle() {
   if (!isBrowserConnected(browser)) {
     sharedBrowser = null;
     clearPagePool();
+    renderLog("debug", "idle_browser_close_skipped_not_connected");
     return;
   }
 
   sharedBrowser = null;
   clearPagePool();
   await browser.close().catch(() => {});
+  renderLog("info", "browser_closed_idle");
 }
 
 function scheduleIdleBrowserClose() {
   clearIdleBrowserCloseTimer();
 
   if (BROWSER_IDLE_TIMEOUT_MS <= 0) {
+    renderLog("debug", "idle_browser_close_disabled");
     return;
   }
 
@@ -554,26 +644,33 @@ function scheduleIdleBrowserClose() {
   if (typeof idleBrowserCloseTimer.unref === "function") {
     idleBrowserCloseTimer.unref();
   }
+  renderLog("debug", "idle_browser_close_scheduled", {
+    delayMs: BROWSER_IDLE_TIMEOUT_MS,
+  });
 }
 
 async function launchBrowser() {
   const browser = await puppeteer.launch(PUPPETEER_LAUNCH_OPTIONS);
+  renderLog("info", "browser_launched");
   browser.on("disconnected", () => {
     if (sharedBrowser === browser) {
       sharedBrowser = null;
     }
     clearIdleBrowserCloseTimer();
     clearPagePool();
+    renderLog("warn", "browser_disconnected");
   });
   return browser;
 }
 
 async function getBrowser() {
   if (isBrowserConnected(sharedBrowser)) {
+    renderLog("debug", "browser_reused");
     return sharedBrowser;
   }
 
   if (!browserLaunchPromise) {
+    renderLog("info", "browser_launch_start");
     browserLaunchPromise = (async () => {
       const browser = await launchBrowser();
       sharedBrowser = browser;
@@ -586,20 +683,34 @@ async function getBrowser() {
   return browserLaunchPromise;
 }
 
-async function generatePoster(data) {
+async function generatePoster(data, context = {}) {
+  const requestId = context.requestId || null;
+  const requestedTemplate = data && typeof data.template === "string" ? data.template : "vote";
+  const requestStartedAt = Date.now();
   const release = await renderSemaphore.acquire();
+  const queueWaitMs = Date.now() - requestStartedAt;
   activeRenderCount += 1;
   clearIdleBrowserCloseTimer();
   let browser;
   let page;
+  let templateKey = "vote";
 
   try {
-    const templateKey =
-      data.template === "combined"
+    templateKey =
+      data && data.template === "combined"
         ? "combined"
-        : data.template === "wards"
+        : data && data.template === "wards"
         ? "wards"
         : "vote";
+
+    renderLog("info", "render_start", {
+      requestId,
+      template: templateKey,
+      requestedTemplate,
+      queueWaitMs,
+      activeRenders: activeRenderCount,
+      queueDepth: renderSemaphore.waiters.length,
+    });
 
     const templateHtml = TEMPLATE_CACHE[templateKey];
     if (!templateHtml) {
@@ -654,7 +765,25 @@ async function generatePoster(data) {
     const imageBuffer = await posterHandle.screenshot({
       type: "png",
     });
+    renderLog("info", "render_success", {
+      requestId,
+      template: templateKey,
+      durationMs: Date.now() - requestStartedAt,
+      imageBytes: imageBuffer.length,
+      activeRenders: activeRenderCount,
+      queueDepth: renderSemaphore.waiters.length,
+    });
     return imageBuffer;
+  } catch (error) {
+    renderLog("error", "render_failed", {
+      requestId,
+      template: templateKey,
+      durationMs: Date.now() - requestStartedAt,
+      error: serializeError(error),
+      activeRenders: activeRenderCount,
+      queueDepth: renderSemaphore.waiters.length,
+    });
+    throw error;
   } finally {
     await releasePooledPage(browser, page);
     activeRenderCount = Math.max(0, activeRenderCount - 1);
