@@ -420,6 +420,7 @@ let browserLaunchPromise = null;
 let activeRenderCount = 0;
 let idleBrowserCloseTimer = null;
 let pagePool = [];
+const configuredPages = new WeakSet();
 
 function isBrowserConnected(browser) {
   if (!browser) return false;
@@ -439,15 +440,58 @@ function clearPagePool() {
   pagePool = [];
 }
 
+function shouldAllowPageRequest(request) {
+  const url = request.url();
+  if (
+    url.startsWith("about:") ||
+    url.startsWith("data:") ||
+    url.startsWith("blob:")
+  ) {
+    return true;
+  }
+
+  return request.resourceType() === "document";
+}
+
+async function configurePageForRendering(page) {
+  if (configuredPages.has(page)) {
+    return;
+  }
+
+  page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
+  page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
+  await page.setJavaScriptEnabled(false);
+  await page.setRequestInterception(true);
+  page.on("request", (request) => {
+    const action = shouldAllowPageRequest(request)
+      ? request.continue()
+      : request.abort();
+    action.catch(() => {});
+  });
+
+  configuredPages.add(page);
+}
+
+async function createConfiguredPage(browser) {
+  const page = await browser.newPage();
+  await configurePageForRendering(page);
+  return page;
+}
+
 async function acquirePooledPage(browser) {
   while (pagePool.length > 0) {
     const pooledPage = pagePool.pop();
     if (pooledPage && !pooledPage.isClosed()) {
-      return pooledPage;
+      try {
+        await configurePageForRendering(pooledPage);
+        return pooledPage;
+      } catch {
+        await pooledPage.close().catch(() => {});
+      }
     }
   }
 
-  return browser.newPage();
+  return createConfiguredPage(browser);
 }
 
 async function releasePooledPage(browser, page) {
@@ -584,9 +628,6 @@ async function generatePoster(data) {
 
     browser = await getBrowser();
     page = await acquirePooledPage(browser);
-
-    page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
-    page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
 
     const requestedHeight = Number(data.height) || 5000;
     const clampedHeight = Math.min(
