@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Election Poster - Assembly Overview</title>
+  <style>
+__BASE_CSS__
+  </style>
+  <style>
+    .poster {
+      position: relative;
+      overflow: hidden;
+      padding-bottom: 10px;
+    }
+
+    .title {
+      font-size: 36px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      line-height: 1.1;
+      text-shadow:
+        0 3px 6px rgba(0, 0, 0, 0.7),
+        0 0 25px rgba(255, 255, 255, 0.2);
+    }
+
+    .subtitle {
+      margin-top: 4px;
+      font-size: 18px;
+      font-weight: 500;
+      opacity: 0.78;
+    }
+
+    .assembly-meta-row {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .assembly-meta-pill {
+      font-size: 12px;
+      font-weight: 600;
+      color: #dbeafe;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      background: rgba(30, 64, 175, 0.2);
+    }
+
+    .assembly-results-grid {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .assembly-row {
+      position: relative;
+    }
+
+    .assembly-row-cards {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 12px;
+    }
+
+    .assembly-row-watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.025;
+      font-size: 82px;
+      font-weight: 650;
+      letter-spacing: 4px;
+      color: #ffffff;
+      pointer-events: none;
+      z-index: 3;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .assembly-result-card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .assembly-result-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .assembly-result-year {
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1;
+      color: #f8fafc;
+    }
+
+    .assembly-type-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+
+    .assembly-type-assembly {
+      color: #dbeafe;
+      background: rgba(37, 99, 235, 0.25);
+      border-color: rgba(96, 165, 250, 0.45);
+    }
+
+    .assembly-type-loksabha {
+      color: #fef3c7;
+      background: rgba(202, 138, 4, 0.25);
+      border-color: rgba(250, 204, 21, 0.5);
+    }
+
+    .assembly-type-localbody {
+      color: #dcfce7;
+      background: rgba(22, 163, 74, 0.25);
+      border-color: rgba(74, 222, 128, 0.45);
+    }
+
+    .assembly-type-other {
+      color: #e2e8f0;
+      background: rgba(100, 116, 139, 0.25);
+      border-color: rgba(148, 163, 184, 0.45);
+    }
+
+    .assembly-summary-grid {
+      margin-top: 10px;
+      margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .assembly-summary-item {
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 7px 8px;
+      min-width: 0;
+    }
+
+    .assembly-summary-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+
+    .assembly-summary-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      overflow-wrap: anywhere;
+    }
+
+    .assembly-vote-header,
+    .assembly-vote-row {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 0.75fr;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .assembly-vote-header {
+      margin-top: 4px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .assembly-vote-row {
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .assembly-alliance-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .assembly-alliance-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .assembly-vote-bar-track {
+      position: relative;
+      height: 20px;
+      border-radius: 6px;
+      background: rgba(148, 163, 184, 0.2);
+      overflow: hidden;
+    }
+
+    .assembly-vote-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+    }
+
+    .assembly-vote-bar-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .assembly-percent-cell {
+      text-align: right;
+      font-size: 12px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .assembly-no-data,
+    .assembly-empty-state {
+      border-radius: 10px;
+      border: 1px dashed rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.5);
+      color: #94a3b8;
+      text-align: center;
+      padding: 16px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .assembly-empty-state {
+      grid-column: 1 / -1;
+    }
+
+    .header,
+    .assembly-results-grid,
+    .footer-watermark,
+    .footer {
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-watermark {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #e5e7eb;
+      opacity: 0.72;
+    }
+
+    .footer {
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .assembly-row-cards {
+        grid-template-columns: 1fr !important;
+      }
+
+      .title {
+        font-size: 32px;
+      }
+
+      .subtitle {
+        font-size: 16px;
+      }
+
+      .assembly-row-watermark {
+        font-size: 64px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="poster" id="poster-root">
+__ASSEMBLY_OVERVIEW_CONTENT__
+  </div>
+</body>
+</html>

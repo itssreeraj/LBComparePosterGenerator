@@ -61,6 +61,14 @@ function nextRequestId() {
   return `gen-${Date.now()}-${requestCounter}`;
 }
 
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isAssemblyOverviewPayload(value) {
+  return isObject(value) && isObject(value.assembly) && Array.isArray(value.historicResults);
+}
+
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(cors());
@@ -101,6 +109,68 @@ app.post("/generate", async (req, res) => {
     serverLog("error", "generate_request_failed", {
       requestId,
       template,
+      durationMs: Date.now() - startedAt,
+      statusCode: 500,
+      error: serializeError(err),
+    });
+    res.status(500).json({ error: "Poster generation failed" });
+  }
+});
+
+app.post("/generate-assembly-overview", async (req, res) => {
+  const requestId = nextRequestId();
+  const startedAt = Date.now();
+  const template = "assembly-overview";
+
+  serverLog("info", "generate_request_start", {
+    requestId,
+    template,
+    route: "/generate-assembly-overview",
+  });
+
+  if (!isAssemblyOverviewPayload(req.body)) {
+    serverLog("warn", "generate_request_invalid", {
+      requestId,
+      template,
+      route: "/generate-assembly-overview",
+      durationMs: Date.now() - startedAt,
+      statusCode: 400,
+    });
+    return res.status(400).json({
+      error: "Invalid payload. Expected { assembly: object, historicResults: array }",
+    });
+  }
+
+  try {
+    const payload = { ...req.body, template };
+    const imageBuffer = await generatePoster(payload, { requestId });
+    res.type("png").send(imageBuffer);
+    serverLog("info", "generate_request_success", {
+      requestId,
+      template,
+      route: "/generate-assembly-overview",
+      durationMs: Date.now() - startedAt,
+      statusCode: 200,
+      imageBytes: imageBuffer.length,
+      resultCount: payload.historicResults.length,
+    });
+  } catch (err) {
+    if (err && err.code === "RENDER_QUEUE_FULL") {
+      res.set("Retry-After", "1");
+      serverLog("warn", "generate_request_rejected", {
+        requestId,
+        template,
+        route: "/generate-assembly-overview",
+        durationMs: Date.now() - startedAt,
+        statusCode: 429,
+        error: serializeError(err),
+      });
+      return res.status(429).json({ error: "Renderer is busy, try again shortly" });
+    }
+    serverLog("error", "generate_request_failed", {
+      requestId,
+      template,
+      route: "/generate-assembly-overview",
       durationMs: Date.now() - startedAt,
       statusCode: 500,
       error: serializeError(err),
