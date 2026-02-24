@@ -90,6 +90,7 @@ let sharedBrowser = null;
 let browserLaunchPromise = null;
 let activeRenderCount = 0;
 let idleBrowserCloseTimer = null;
+let pagePool = [];
 
 function isBrowserConnected(browser) {
   if (!browser) return false;
@@ -105,6 +106,47 @@ function clearIdleBrowserCloseTimer() {
   }
 }
 
+function clearPagePool() {
+  pagePool = [];
+}
+
+async function acquirePooledPage(browser) {
+  while (pagePool.length > 0) {
+    const pooledPage = pagePool.pop();
+    if (pooledPage && !pooledPage.isClosed()) {
+      return pooledPage;
+    }
+  }
+
+  return browser.newPage();
+}
+
+async function releasePooledPage(browser, page) {
+  if (!page) {
+    return;
+  }
+
+  if (!isBrowserConnected(browser) || page.isClosed()) {
+    return;
+  }
+
+  try {
+    await page.goto("about:blank", {
+      waitUntil: "domcontentloaded",
+      timeout: ASYNC_RENDER_TIMEOUT_MS,
+    });
+  } catch {
+    await page.close().catch(() => {});
+    return;
+  }
+
+  if (!isBrowserConnected(browser) || page.isClosed()) {
+    return;
+  }
+
+  pagePool.push(page);
+}
+
 async function closeSharedBrowserIfIdle() {
   if (activeRenderCount > 0) {
     return;
@@ -113,10 +155,12 @@ async function closeSharedBrowserIfIdle() {
   const browser = sharedBrowser;
   if (!isBrowserConnected(browser)) {
     sharedBrowser = null;
+    clearPagePool();
     return;
   }
 
   sharedBrowser = null;
+  clearPagePool();
   await browser.close().catch(() => {});
 }
 
@@ -146,6 +190,7 @@ async function launchBrowser() {
       sharedBrowser = null;
     }
     clearIdleBrowserCloseTimer();
+    clearPagePool();
   });
   return browser;
 }
@@ -172,6 +217,7 @@ async function generatePoster(data) {
   const release = await renderSemaphore.acquire();
   activeRenderCount += 1;
   clearIdleBrowserCloseTimer();
+  let browser;
   let page;
 
   try {
@@ -190,8 +236,8 @@ async function generatePoster(data) {
     let html = templateHtml;
     html = html.replace("__DATA__", JSON.stringify(data));
 
-    const browser = await getBrowser();
-    page = await browser.newPage();
+    browser = await getBrowser();
+    page = await acquirePooledPage(browser);
 
     page.setDefaultTimeout(ASYNC_RENDER_TIMEOUT_MS);
     page.setDefaultNavigationTimeout(ASYNC_RENDER_TIMEOUT_MS);
@@ -223,9 +269,7 @@ async function generatePoster(data) {
     });
     return imageBuffer;
   } finally {
-    if (page) {
-      await page.close().catch(() => {});
-    }
+    await releasePooledPage(browser, page);
     activeRenderCount = Math.max(0, activeRenderCount - 1);
     release();
     if (activeRenderCount === 0) {
