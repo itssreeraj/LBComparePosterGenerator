@@ -420,7 +420,7 @@ function buildAssemblyResultCardMarkup(result) {
       <div class="assembly-vote-header">
         <div>Alliance</div>
         <div>Votes</div>
-        <div>%</div>
+        <div class="assembly-vote-header-percent">%</div>
       </div>
       ${rowsMarkup || '<div class="assembly-no-data">No vote share data</div>'}
     </div>
@@ -442,7 +442,7 @@ function buildAssemblyOverviewPosterMarkup(data) {
 
   const results = asArray(data?.historicResults)
     .slice()
-    .sort((left, right) => numberOrDefault(right?.year, 0) - numberOrDefault(left?.year, 0));
+    .sort((left, right) => numberOrDefault(left?.year, 0) - numberOrDefault(right?.year, 0));
   const rowMarkupList = [];
   for (let index = 0; index < results.length; index += 2) {
     const rowResults = results.slice(index, index + 2);

@@ -23,8 +23,6 @@ RUN apt-get update && apt-get install -y \
   libglib2.0-0 \
   libu2f-udev \
   libvulkan1 \
-  wget \
-  xdg-utils \
   --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
