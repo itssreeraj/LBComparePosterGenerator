@@ -49,10 +49,16 @@ const TEMPLATE_FILE_MAP = {
   wards: "ward-template.html",
   vote: "vote-template.html",
 };
+const BASE_CSS_PATH = path.join(__dirname, "templates", "base.css");
+const BASE_CSS_CONTENT = fs.readFileSync(BASE_CSS_PATH, "utf8");
 const TEMPLATE_CACHE = Object.entries(TEMPLATE_FILE_MAP).reduce(
   (accumulator, [key, fileName]) => {
     const templatePath = path.join(__dirname, "templates", fileName);
-    accumulator[key] = fs.readFileSync(templatePath, "utf8");
+    const templateHtml = fs
+      .readFileSync(templatePath, "utf8")
+      .split("__BASE_CSS__")
+      .join(BASE_CSS_CONTENT);
+    accumulator[key] = templateHtml;
     return accumulator;
   },
   {}
