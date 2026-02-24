@@ -45,6 +45,7 @@ const PUPPETEER_LAUNCH_OPTIONS = {
       : ["--no-sandbox", "--disable-setuid-sandbox"],
 };
 const TEMPLATE_FILE_MAP = {
+  "assembly-overview": "assembly-overview-template.html",
   combined: "combined-template.html",
   wards: "ward-template.html",
   vote: "vote-template.html",
@@ -64,6 +65,13 @@ const TEMPLATE_CACHE = Object.entries(TEMPLATE_FILE_MAP).reduce(
   {}
 );
 const SAFE_DEFAULT_COLOR = "#999999";
+const ALLIANCE_COLOR_MAP = {
+  LDF: "#ef4444",
+  UDF: "#16a34a",
+  NDA: "#f97316",
+  IND: "#3b82f6",
+  OTH: "#9ca3af",
+};
 const LOG_LEVEL_WEIGHT = {
   debug: 10,
   info: 20,
@@ -143,6 +151,11 @@ function sanitizeColor(value) {
     return color;
   }
   return SAFE_DEFAULT_COLOR;
+}
+
+function getAllianceColor(alliance) {
+  const normalizedAlliance = textOrEmpty(alliance).trim().toUpperCase();
+  return ALLIANCE_COLOR_MAP[normalizedAlliance] || SAFE_DEFAULT_COLOR;
 }
 
 function textOrEmpty(value) {
@@ -316,6 +329,156 @@ function buildCombinedPosterMarkup(data) {
     </div>
     <div class="watermark">@centerrightin</div>
     <div class="footer-watermark">@centerrightin</div>
+  `;
+}
+
+function normalizeResultType(type) {
+  const normalizedType = textOrEmpty(type).trim().toUpperCase();
+  if (normalizedType === "ASSEMBLY") return "ASSEMBLY";
+  if (normalizedType === "LOKSABHA") return "LOKSABHA";
+  if (normalizedType === "LOCALBODY") return "LOCALBODY";
+  return "OTHER";
+}
+
+function formatPercentWithTwoDecimals(value) {
+  const number = toFiniteNumber(value);
+  return number === null ? "-" : `${number.toFixed(2)}%`;
+}
+
+function buildAssemblyVoteRowsMarkup(rows) {
+  const rankedRows = rows
+    .slice()
+    .sort(
+      (left, right) =>
+        numberOrDefault(right?.votes, 0) - numberOrDefault(left?.votes, 0)
+    )
+    .slice(0, 4);
+
+  const maxVotes = rankedRows.reduce((max, row) => {
+    const votes = numberOrDefault(row?.votes, 0);
+    return Math.max(max, votes);
+  }, 0);
+
+  return rankedRows
+    .map((row) => {
+      const allianceRaw = textOrEmpty(row?.alliance || "OTH").trim().toUpperCase() || "OTH";
+      const alliance = escapeHtml(allianceRaw);
+      const color = sanitizeColor(row?.color || getAllianceColor(allianceRaw));
+      const votes = numberOrDefault(row?.votes, 0);
+      const voteDisplay = escapeHtml(formatNumber(row?.votes));
+      const proportion = maxVotes > 0 ? Math.max(0, Math.min(votes / maxVotes, 1)) : 0;
+      const percentDisplay = escapeHtml(
+        formatPercentWithTwoDecimals(row?.percentage ?? row?.percent)
+      );
+
+      return `
+        <div class="assembly-vote-row">
+          <div class="assembly-alliance-cell">
+            <span class="assembly-alliance-dot" style="background:${color};"></span>
+            <span>${alliance}</span>
+          </div>
+          <div class="assembly-vote-bar-track">
+            <div class="assembly-vote-bar-fill" style="background:${color};width:${proportion * 100}%;"></div>
+            <div class="assembly-vote-bar-text">${voteDisplay}</div>
+          </div>
+          <div class="assembly-percent-cell">${percentDisplay}</div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function buildAssemblyResultCardMarkup(result) {
+  const year = escapeHtml(textOrEmpty(result?.year));
+  const type = normalizeResultType(result?.type);
+  const winner = escapeHtml(textOrEmpty(result?.winner || "-"));
+  const runnerUp = escapeHtml(textOrEmpty(result?.runnerUp || "-"));
+  const margin = escapeHtml(formatNumber(result?.margin));
+  const voteRows = asArray(result?.voteShare);
+  const rowsMarkup = buildAssemblyVoteRowsMarkup(voteRows);
+
+  return `
+    <div class="assembly-result-card">
+      <div class="assembly-result-head">
+        <div class="assembly-result-year">${year}</div>
+        <div class="assembly-type-badge assembly-type-${type.toLowerCase()}">${escapeHtml(type)}</div>
+      </div>
+      <div class="assembly-summary-grid">
+        <div class="assembly-summary-item">
+          <div class="assembly-summary-label">Winner</div>
+          <div class="assembly-summary-value">${winner}</div>
+        </div>
+        <div class="assembly-summary-item">
+          <div class="assembly-summary-label">Runner-up</div>
+          <div class="assembly-summary-value">${runnerUp}</div>
+        </div>
+        <div class="assembly-summary-item">
+          <div class="assembly-summary-label">Margin</div>
+          <div class="assembly-summary-value">${margin}</div>
+        </div>
+      </div>
+      <div class="assembly-vote-header">
+        <div>Alliance</div>
+        <div>Votes</div>
+        <div>%</div>
+      </div>
+      ${rowsMarkup || '<div class="assembly-no-data">No vote share data</div>'}
+    </div>
+  `;
+}
+
+function buildAssemblyOverviewPosterMarkup(data) {
+  const assembly = data && typeof data.assembly === "object" ? data.assembly : {};
+  const titleText = textOrEmpty(assembly?.name).trim() || "Assembly Overview";
+  const districtText = textOrEmpty(assembly?.district?.name).trim();
+  const lsText = textOrEmpty(assembly?.ls?.name).trim();
+  const metaPills = [];
+  if (districtText) {
+    metaPills.push(`<span class="assembly-meta-pill">District: ${escapeHtml(districtText)}</span>`);
+  }
+  if (lsText) {
+    metaPills.push(`<span class="assembly-meta-pill">Lok Sabha: ${escapeHtml(lsText)}</span>`);
+  }
+
+  const results = asArray(data?.historicResults)
+    .slice()
+    .sort((left, right) => numberOrDefault(right?.year, 0) - numberOrDefault(left?.year, 0));
+  const rowMarkupList = [];
+  for (let index = 0; index < results.length; index += 2) {
+    const rowResults = results.slice(index, index + 2);
+    const rowColumns = rowResults.length <= 1 ? "1fr" : "1fr 1fr";
+    const rowCardsMarkup = rowResults
+      .map((result) => buildAssemblyResultCardMarkup(result))
+      .join("");
+    rowMarkupList.push(`
+      <div class="assembly-row">
+        <div class="assembly-row-watermark">@centerrightin</div>
+        <div class="assembly-row-cards" style="grid-template-columns:${rowColumns};">
+          ${rowCardsMarkup}
+        </div>
+      </div>
+    `);
+  }
+  const rowsMarkup = rowMarkupList.join("");
+  const metaRowMarkup = metaPills.length
+    ? `<div class="assembly-meta-row">${metaPills.join("")}</div>`
+    : "";
+
+  return `
+    <div class="header">
+      <div class="title">${escapeHtml(titleText)}</div>
+      <div class="subtitle">Assembly Results Overview</div>
+      ${metaRowMarkup}
+    </div>
+    <div class="assembly-results-grid">
+      ${rowsMarkup || '<div class="assembly-empty-state">No historic election results available.</div>'}
+    </div>
+    <div class="footer-watermark">@centerrightin</div>
+    <div class="footer">
+      <span>Generated by <strong>CentreRightIN</strong></span>
+      &nbsp;·&nbsp;
+      <a href="https://x.com/CentrerightIN" style="color:#60a5fa;text-decoration:none;font-weight:600;" target="_blank">@CentrerightIN</a>
+    </div>
   `;
 }
 
@@ -701,6 +864,11 @@ async function generatePoster(data, context = {}) {
         ? "combined"
         : data && data.template === "wards"
         ? "wards"
+        : data &&
+          (data.template === "assembly-overview" ||
+            data.template === "assemblyOverview" ||
+            data.template === "assembly_overview")
+        ? "assembly-overview"
         : "vote";
 
     renderLog("info", "render_start", {
@@ -733,6 +901,14 @@ async function generatePoster(data, context = {}) {
         throw new Error("Ward template placeholder not found");
       }
       html = templateHtml.replace("__WARD_CONTENT__", buildWardPosterMarkup(data));
+    } else if (templateKey === "assembly-overview") {
+      if (!templateHtml.includes("__ASSEMBLY_OVERVIEW_CONTENT__")) {
+        throw new Error("Assembly overview template placeholder not found");
+      }
+      html = templateHtml.replace(
+        "__ASSEMBLY_OVERVIEW_CONTENT__",
+        buildAssemblyOverviewPosterMarkup(data)
+      );
     } else {
       throw new Error(`Unhandled template key '${templateKey}'`);
     }
