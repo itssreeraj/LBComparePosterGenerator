@@ -309,12 +309,8 @@ function buildCombinedPosterMarkup(data) {
   const years = asArray(data?.years);
   const yearColumns = years.map((yearData) => buildYearColumnMarkup(yearData)).join("");
 
-  let gridTemplateColumns = "repeat(1, 1fr)";
-  if (years.length <= 3) {
-    gridTemplateColumns = "repeat(3, 1fr)";
-  } else if (years.length <= 6) {
-    gridTemplateColumns = "repeat(2, 1fr)";
-  }
+  const gridTemplateColumns =
+    years.length === 4 ? "repeat(2, 1fr)" : "repeat(3, 1fr)";
 
   const district = escapeHtml(textOrEmpty(data?.district));
   const localbody = escapeHtml(textOrEmpty(data?.localbody));
